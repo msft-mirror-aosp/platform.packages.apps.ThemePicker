@@ -15,8 +15,6 @@
  */
 package com.android.customization.model.theme;
 
-import static android.content.res.Resources.ID_NULL;
-
 import static com.android.customization.model.ResourceConstants.ANDROID_PACKAGE;
 import static com.android.customization.model.ResourceConstants.ICONS_FOR_PREVIEW;
 import static com.android.customization.model.ResourceConstants.OVERLAY_CATEGORY_COLOR;
@@ -35,7 +33,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
-import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
 import android.service.wallpaper.WallpaperService;
 import android.text.TextUtils;
@@ -86,16 +83,11 @@ public class DefaultThemeProvider extends ResourcesApkProvider implements ThemeB
     private static final String WALLPAPER_PREFIX = "theme_wallpaper_";
     private static final String WALLPAPER_TITLE_PREFIX = "theme_wallpaper_title_";
     private static final String WALLPAPER_ATTRIBUTION_PREFIX = "theme_wallpaper_attribution_";
-    private static final String WALLPAPER_THUMB_PREFIX = "theme_wallpaper_thumbnail_";
     private static final String WALLPAPER_ACTION_PREFIX = "theme_wallpaper_action_";
-    private static final String WALLPAPER_OPTIONS_PREFIX = "theme_wallpaper_options_";
 
     private static final String DEFAULT_THEME_NAME= "default";
     private static final String THEME_TITLE_FIELD = "_theme_title";
     private static final String THEME_ID_FIELD = "_theme_id";
-
-    // Maximum number of themes allowed (including default, pre-bundled and custom)
-    private static final int MAX_TOTAL_THEMES = 10;
 
     private final OverlayThemeExtractor mOverlayProvider;
     private List<ThemeBundle> mThemes;
@@ -189,11 +181,7 @@ public class DefaultThemeProvider extends ResourcesApkProvider implements ThemeB
             String wallpaperResName = WALLPAPER_PREFIX + themeName;
             int wallpaperResId = mStubApkResources.getIdentifier(wallpaperResName,
                     "drawable", mStubPackageName);
-            // Check in case the theme has a separate thumbnail for the wallpaper
-            String wallpaperThumbnailResName = WALLPAPER_THUMB_PREFIX + themeName;
-            int wallpaperThumbnailResId = mStubApkResources.getIdentifier(wallpaperThumbnailResName,
-                    "drawable", mStubPackageName);
-            if (wallpaperResId != ID_NULL) {
+            if (wallpaperResId > 0) {
                 builder.setWallpaperInfo(mStubPackageName, wallpaperResName,
                         themeName, wallpaperResId,
                         mStubApkResources.getIdentifier(WALLPAPER_TITLE_PREFIX + themeName,
@@ -203,26 +191,19 @@ public class DefaultThemeProvider extends ResourcesApkProvider implements ThemeB
                                 mStubPackageName),
                         mStubApkResources.getIdentifier(WALLPAPER_ACTION_PREFIX + themeName,
                                 "string", mStubPackageName))
-                        .setWallpaperAsset(wallpaperThumbnailResId != ID_NULL ?
-                                getDrawableResourceAsset(WALLPAPER_THUMB_PREFIX, themeName)
-                                : getDrawableResourceAsset(WALLPAPER_PREFIX, themeName));
+                        .setWallpaperAsset(
+                                getDrawableResourceAsset(WALLPAPER_PREFIX, themeName));
             } else {
                 // Try to see if it's a live wallpaper reference
                 wallpaperResId = mStubApkResources.getIdentifier(wallpaperResName,
                         "string", mStubPackageName);
-                if (wallpaperResId != ID_NULL) {
+                if (wallpaperResId > 0) {
                     String wpComponent = mStubApkResources.getString(wallpaperResId);
-
-                    int wallpaperOptionsResId = mStubApkResources.getIdentifier(
-                            WALLPAPER_OPTIONS_PREFIX + themeName, "string", mStubPackageName);
-                    String wallpaperOptions = wallpaperOptionsResId != ID_NULL
-                            ? mStubApkResources.getString(wallpaperOptionsResId) : null;
-
                     String[] componentParts = wpComponent.split("/");
                     Intent liveWpIntent =  new Intent(WallpaperService.SERVICE_INTERFACE);
                     liveWpIntent.setComponent(
-                            new ComponentName(componentParts[0], componentParts[1]));
-
+                            new ComponentName(componentParts[0],
+                                    componentParts[0] + componentParts[1]));
                     Context appContext = mContext.getApplicationContext();
                     PackageManager pm = appContext.getPackageManager();
                     ResolveInfo resolveInfo =
@@ -232,11 +213,8 @@ public class DefaultThemeProvider extends ResourcesApkProvider implements ThemeB
                         try {
                             wallpaperInfo = new android.app.WallpaperInfo(appContext, resolveInfo);
                             LiveWallpaperInfo liveInfo = new LiveWallpaperInfo(wallpaperInfo);
-                            builder.setLiveWallpaperInfo(liveInfo).setWallpaperAsset(
-                                    wallpaperThumbnailResId != ID_NULL ?
-                                        getDrawableResourceAsset(WALLPAPER_THUMB_PREFIX, themeName)
-                                        : liveInfo.getThumbAsset(mContext))
-                                    .setWallpaperOptions(wallpaperOptions);
+                            builder.setLiveWallpaperInfo(liveInfo)
+                                    .setWallpaperAsset(liveInfo.getThumbAsset(mContext));
                         } catch (XmlPullParserException | IOException e) {
                             Log.w(TAG, "Skipping wallpaper " + resolveInfo.serviceInfo, e);
                         }
@@ -406,11 +384,9 @@ public class DefaultThemeProvider extends ResourcesApkProvider implements ThemeB
             }
         }
 
-        if (mThemes.size() < MAX_TOTAL_THEMES) {
-            // Add an empty one at the end.
-            mThemes.add(new CustomTheme(CustomTheme.newId(), mContext.getString(
-                    R.string.custom_theme_title, customThemesCount + 1), new HashMap<>(), null));
-        }
+        // Add an empty one at the end.
+        mThemes.add(new CustomTheme(CustomTheme.newId(), mContext.getString(
+                R.string.custom_theme_title, customThemesCount + 1), new HashMap<>(), null));
 
     }
 

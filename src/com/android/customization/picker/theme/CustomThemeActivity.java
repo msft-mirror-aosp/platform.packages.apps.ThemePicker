@@ -15,6 +15,7 @@
  */
 package com.android.customization.picker.theme;
 
+import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.Intent;
 import android.os.Bundle;
@@ -103,7 +104,7 @@ public class CustomThemeActivity extends FragmentActivity implements
             }
         }
 
-        mThemeManager = injector.getThemeManager(
+        mThemeManager = new ThemeManager(
                 new DefaultThemeProvider(this, injector.getCustomizationPreferences(this)),
                 this,
                 new WallpaperSetter(injector.getWallpaperPersister(this),

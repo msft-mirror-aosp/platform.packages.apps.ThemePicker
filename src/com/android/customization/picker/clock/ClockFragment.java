@@ -18,7 +18,6 @@ package com.android.customization.picker.clock;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,11 +26,9 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.widget.ContentLoadingProgressBar;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.customization.model.CustomizationManager.Callback;
-import com.android.customization.model.CustomizationManager.OptionsFetchedListener;
 import com.android.customization.model.clock.BaseClockManager;
 import com.android.customization.model.clock.Clockface;
 import com.android.customization.module.ThemesUserEventLogger;
@@ -44,14 +41,10 @@ import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.picker.ToolbarFragment;
 
-import java.util.List;
-
 /**
  * Fragment that contains the main UI for selecting and applying a Clockface.
  */
 public class ClockFragment extends ToolbarFragment {
-
-    private static final String TAG = "ClockFragment";
 
     /**
      * Interface to be implemented by an Activity hosting a {@link ClockFragment}
@@ -71,9 +64,6 @@ public class ClockFragment extends ToolbarFragment {
     private Clockface mSelectedOption;
     private BaseClockManager mClockManager;
     private PreviewPager mPreviewPager;
-    private ContentLoadingProgressBar mLoading;
-    private View mContent;
-    private View mError;
     private ThemesUserEventLogger mEventLogger;
 
     @Override
@@ -91,11 +81,8 @@ public class ClockFragment extends ToolbarFragment {
         View view = inflater.inflate(
                 R.layout.fragment_clock_picker, container, /* attachToRoot */ false);
         setUpToolbar(view);
-        mContent = view.findViewById(R.id.content_section);
         mPreviewPager = view.findViewById(R.id.clock_preview_pager);
         mOptionsContainer = view.findViewById(R.id.options_container);
-        mLoading = view.findViewById(R.id.loading_indicator);
-        mError = view.findViewById(R.id.error_section);
         setUpOptions();
         view.findViewById(R.id.apply_button).setOnClickListener(v -> {
             mClockManager.apply(mSelectedOption, new Callback() {
@@ -108,9 +95,6 @@ public class ClockFragment extends ToolbarFragment {
 
                 @Override
                 public void onError(@Nullable Throwable throwable) {
-                    if (throwable != null) {
-                        Log.e(TAG, "Error loading clockfaces", throwable);
-                    }
                     //TODO(santie): handle
                 }
             });
@@ -124,50 +108,26 @@ public class ClockFragment extends ToolbarFragment {
     }
 
     private void setUpOptions() {
-        hideError();
-        mLoading.show();
-        mClockManager.fetchOptions(new OptionsFetchedListener<Clockface>() {
-           @Override
-           public void onOptionsLoaded(List<Clockface> options) {
-               mLoading.hide();
-               mOptionsController = new OptionSelectorController<>(mOptionsContainer, options);
+        mClockManager.fetchOptions(options -> {
+            mOptionsController = new OptionSelectorController<>(mOptionsContainer, options);
 
-               mOptionsController.addListener(selected -> {
-                   mSelectedOption = (Clockface) selected;
-                   mEventLogger.logClockSelected(mSelectedOption);
-                   createAdapter();
-               });
-               mOptionsController.initOptions(mClockManager);
-               for (Clockface option : options) {
-                   if (option.isActive(mClockManager)) {
-                       mSelectedOption = option;
-                   }
-               }
-               // For development only, as there should always be a grid set.
-               if (mSelectedOption == null) {
-                   mSelectedOption = options.get(0);
-               }
-               createAdapter();
-           }
-           @Override
-            public void onError(@Nullable Throwable throwable) {
-                if (throwable != null) {
-                   Log.e(TAG, "Error loading clockfaces", throwable);
+            mOptionsController.addListener(selected -> {
+                mSelectedOption = (Clockface) selected;
+                mEventLogger.logClockSelected(mSelectedOption);
+                createAdapter();
+            });
+            mOptionsController.initOptions(mClockManager);
+            for (Clockface option : options) {
+                if (option.isActive(mClockManager)) {
+                    mSelectedOption = option;
                 }
-                showError();
             }
-       }, false);
-    }
-
-    private void hideError() {
-        mContent.setVisibility(View.VISIBLE);
-        mError.setVisibility(View.GONE);
-    }
-
-    private void showError() {
-        mLoading.hide();
-        mContent.setVisibility(View.GONE);
-        mError.setVisibility(View.VISIBLE);
+            // For development only, as there should always be a grid set.
+            if (mSelectedOption == null) {
+                mSelectedOption = options.get(0);
+            }
+            createAdapter();
+        }, false);
     }
 
     private static class ClockfacePreviewPage extends PreviewPage {

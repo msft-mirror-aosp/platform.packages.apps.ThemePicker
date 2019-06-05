@@ -78,19 +78,8 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
         @Override
         protected void onPostExecute(List<GridOption> gridOptions) {
             if (mCallback != null) {
-                if (gridOptions != null && !gridOptions.isEmpty()) {
-                    mCallback.onOptionsLoaded(gridOptions);
-                } else {
-                    mCallback.onError(null);
-                }
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            super.onCancelled();
-            if (mCallback != null) {
-                mCallback.onError(null);
+                mCallback.onOptionsLoaded(gridOptions != null ? gridOptions
+                        : Collections.emptyList());
             }
         }
     }

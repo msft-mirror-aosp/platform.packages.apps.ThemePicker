@@ -56,7 +56,6 @@ public class ClockFacePickerActivity extends FragmentActivity implements ClockFr
                 result.putExtra(EXTRA_CLOCK_FACE_NAME, option.getId());
                 setResult(RESULT_OK, result);
                 callback.onSuccess();
-                finish();
             }
 
             @Override

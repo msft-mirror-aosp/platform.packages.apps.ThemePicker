@@ -26,8 +26,8 @@ import static com.android.customization.model.ResourceConstants.OVERLAY_CATEGORY
 
 import android.graphics.Point;
 import android.provider.Settings;
-import android.text.TextUtils;
 
+import android.text.TextUtils;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
@@ -42,7 +42,6 @@ import com.android.wallpaper.module.WallpaperPersister.SetWallpaperCallback;
 import com.android.wallpaper.module.WallpaperSetter;
 import com.android.wallpaper.picker.SetWallpaperDialogFragment.Listener;
 import com.android.wallpaper.util.WallpaperCropUtils;
-
 import org.json.JSONObject;
 
 import java.util.HashSet;
@@ -68,7 +67,7 @@ public class ThemeManager implements CustomizationManager<ThemeBundle> {
     private final OverlayManagerCompat mOverlayManagerCompat;
 
     private final WallpaperSetter mWallpaperSetter;
-    protected final FragmentActivity mActivity;
+    private final FragmentActivity mActivity;
     private final ThemesUserEventLogger mEventLogger;
 
     private Map<String, String> mCurrentOverlays;
@@ -123,7 +122,6 @@ public class ThemeManager implements CustomizationManager<ThemeBundle> {
         return new SetWallpaperCallback() {
             @Override
             public void onSuccess() {
-                applyWallpaperOptions(theme);
                 applyOverlays(theme, callback);
             }
 
@@ -132,10 +130,6 @@ public class ThemeManager implements CustomizationManager<ThemeBundle> {
                 callback.onError(throwable);
             }
         };
-    }
-
-    protected void applyWallpaperOptions(ThemeBundle theme) {
-        //Do nothing.
     }
 
     private void applyWallpaper(ThemeBundle theme, int destination,
