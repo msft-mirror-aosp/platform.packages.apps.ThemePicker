@@ -35,6 +35,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -55,6 +56,7 @@ import androidx.core.graphics.ColorUtils;
 import com.android.customization.model.CustomizationManager;
 import com.android.customization.model.CustomizationOption;
 import com.android.customization.model.ResourceConstants;
+import com.android.customization.model.theme.ThemeBundle.PreviewInfo.ShapeAppIcon;
 import com.android.customization.model.theme.custom.CustomTheme.Builder;
 import com.android.wallpaper.R;
 
@@ -314,8 +316,21 @@ public abstract class ThemeComponentOption implements CustomizationOption<ThemeC
         @Override
         public void bindThumbnailTile(View view) {
             @ColorInt int color = resolveColor(view.getResources());
-            ((ImageView) view.findViewById(R.id.option_tile)).setImageTintList(
+            LayerDrawable selectedOption = (LayerDrawable) view.getResources().getDrawable(
+                    R.drawable.color_chip_hollow, view.getContext().getTheme());
+            Drawable unselectedOption = view.getResources().getDrawable(
+                    R.drawable.color_chip_filled, view.getContext().getTheme());
+
+            selectedOption.findDrawableByLayerId(R.id.center_fill).setTintList(
                     ColorStateList.valueOf(color));
+            unselectedOption.setTintList(ColorStateList.valueOf(color));
+
+            StateListDrawable stateListDrawable = new StateListDrawable();
+            stateListDrawable.addState(new int[] {android.R.attr.state_activated}, selectedOption);
+            stateListDrawable.addState(
+                    new int[] {-android.R.attr.state_activated}, unselectedOption);
+
+            ((ImageView) view.findViewById(R.id.option_tile)).setImageDrawable(stateListDrawable);
             view.setContentDescription(mLabel);
         }
 
@@ -416,7 +431,7 @@ public abstract class ThemeComponentOption implements CustomizationOption<ThemeC
     public static class ShapeOption extends ThemeComponentOption {
 
         private final LayerDrawable mShape;
-        private final List<Drawable> mAppIcons;
+        private final List<ShapeAppIcon> mAppIcons;
         private final String mLabel;
         private final Path mPath;
         private final int mCornerRadius;
@@ -427,7 +442,7 @@ public abstract class ThemeComponentOption implements CustomizationOption<ThemeC
 
         ShapeOption(String packageName, String label, Path path,
                 @Dimension int cornerRadius, Drawable shapeDrawable,
-                List<Drawable> appIcons) {
+                List<ShapeAppIcon> appIcons) {
             addOverlayPackage(OVERLAY_CATEGORY_SHAPE, packageName);
             mLabel = label;
             mAppIcons = appIcons;
@@ -489,16 +504,15 @@ public abstract class ThemeComponentOption implements CustomizationOption<ThemeC
             }
             for (int i = 0; i < mShapeIconIds.length && i < mAppIcons.size(); i++) {
                 ImageView iconView = cardBody.findViewById(mShapeIconIds[i]);
-                iconView.setBackground(mAppIcons.get(i));
+                iconView.setBackground(mAppIcons.get(i).getDrawable());
             }
         }
 
         @Override
         public Builder buildStep(Builder builder) {
-            builder.setShapePath(mPath).setBottomSheetCornerRadius(mCornerRadius);
-            for (Drawable appIcon : mAppIcons) {
-                builder.addShapePreviewIcon(appIcon);
-            }
+            builder.setShapePath(mPath)
+                    .setBottomSheetCornerRadius(mCornerRadius)
+                    .setShapePreviewIcons(mAppIcons);
             return super.buildStep(builder);
         }
     }
