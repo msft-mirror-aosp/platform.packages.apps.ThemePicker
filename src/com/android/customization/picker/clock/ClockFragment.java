@@ -15,7 +15,8 @@
  */
 package com.android.customization.picker.clock;
 
-import android.app.Activity;
+import static android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Bundle;
@@ -42,7 +43,7 @@ import com.android.customization.widget.OptionSelectorController;
 import com.android.wallpaper.R;
 import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.picker.AppbarFragment;
+import com.android.wallpaper.picker.ToolbarFragment;
 import com.android.wallpaper.widget.PreviewPager;
 
 import java.util.List;
@@ -50,7 +51,7 @@ import java.util.List;
 /**
  * Fragment that contains the main UI for selecting and applying a Clockface.
  */
-public class ClockFragment extends AppbarFragment {
+public class ClockFragment extends ToolbarFragment {
 
     private static final String TAG = "ClockFragment";
 
@@ -63,7 +64,7 @@ public class ClockFragment extends AppbarFragment {
 
     public static ClockFragment newInstance(CharSequence title) {
         ClockFragment fragment = new ClockFragment();
-        fragment.setArguments(AppbarFragment.createArguments(title));
+        fragment.setArguments(ToolbarFragment.createArguments(title));
         return fragment;
     }
 
@@ -89,8 +90,20 @@ public class ClockFragment extends AppbarFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(
-                R.layout.fragment_clock_picker, container, /* attachToRoot */ false);
+        View view;
+        if (ADD_SCALABLE_HEADER) {
+            // TODO(b/147780560): Once the temporary flag (ADD_SCALABLE_HEADER) is removed,
+            // we should have a layout with the same name for portrait and landscape.
+            int orientation = getResources().getConfiguration().orientation;
+            view = inflater.inflate(
+                    orientation == ORIENTATION_LANDSCAPE
+                            ? R.layout.fragment_clock_picker
+                            : R.layout.fragment_clock_scalable_picker,
+                    container, /* attachToRoot */ false);
+        } else {
+            view = inflater.inflate(
+                    R.layout.fragment_clock_picker, container, /* attachToRoot */ false);
+        }
         setUpToolbar(view);
         mContent = view.findViewById(R.id.content_section);
         mPreviewPager = view.findViewById(R.id.clock_preview_pager);
@@ -121,7 +134,7 @@ public class ClockFragment extends AppbarFragment {
     }
 
     private void createAdapter() {
-        mPreviewPager.setAdapter(new ClockPreviewAdapter(getActivity(), mSelectedOption));
+        mPreviewPager.setAdapter(new ClockPreviewAdapter(getContext(), mSelectedOption));
     }
 
     private void setUpOptions() {
@@ -175,8 +188,8 @@ public class ClockFragment extends AppbarFragment {
 
         private final Asset mPreviewAsset;
 
-        public ClockfacePreviewPage(String title, Activity activity, Asset previewAsset) {
-            super(title, activity);
+        public ClockfacePreviewPage(String title, Asset previewAsset) {
+            super(title);
             mPreviewAsset = previewAsset;
         }
 
@@ -200,10 +213,9 @@ public class ClockFragment extends AppbarFragment {
      * we don't want to just scroll)
      */
     private static class ClockPreviewAdapter extends BasePreviewAdapter<ClockfacePreviewPage> {
-        ClockPreviewAdapter(Activity activity, Clockface clockface) {
-            super(activity, R.layout.clock_preview_card);
-            addPage(new ClockfacePreviewPage(
-                    clockface.getTitle(), activity , clockface.getPreviewAsset()));
+        ClockPreviewAdapter(Context context, Clockface clockface) {
+            super(context, R.layout.clock_preview_card);
+            addPage(new ClockfacePreviewPage(clockface.getTitle(), clockface.getPreviewAsset()));
         }
     }
 }

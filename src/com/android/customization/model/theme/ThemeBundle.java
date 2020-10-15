@@ -31,6 +31,7 @@ import android.graphics.drawable.AdaptiveIconDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.PathShape;
+import android.icu.text.SimpleDateFormat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -39,16 +40,18 @@ import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.Dimension;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.core.graphics.PathParser;
 
 import com.android.customization.model.CustomizationManager;
 import com.android.customization.model.CustomizationOption;
-import com.android.customization.model.theme.ThemeBundle.PreviewInfo.ShapeAppIcon;
 import com.android.customization.widget.DynamicAdaptiveIconDrawable;
 import com.android.wallpaper.R;
 import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.BitmapCachingAsset;
+import com.android.wallpaper.model.LiveWallpaperInfo;
 import com.android.wallpaper.model.WallpaperInfo;
 
 import org.json.JSONException;
@@ -56,13 +59,14 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Represents a Theme component available in the system as a "persona" bundle.
@@ -79,16 +83,21 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
     private final PreviewInfo mPreviewInfo;
     private final boolean mIsDefault;
     protected final Map<String, String> mPackagesByCategory;
+    @Nullable private final WallpaperInfo mWallpaperInfo;
+    @Nullable private final String mWallpaperOptions;
     private WallpaperInfo mOverrideWallpaper;
     private Asset mOverrideWallpaperAsset;
     private CharSequence mContentDescription;
 
     protected ThemeBundle(String title, Map<String, String> overlayPackages,
-            boolean isDefault, PreviewInfo previewInfo) {
+            boolean isDefault, @Nullable WallpaperInfo wallpaperInfo,
+            @Nullable String wallpaperOptions, PreviewInfo previewInfo) {
         mTitle = title;
         mIsDefault = isDefault;
         mPreviewInfo = previewInfo;
-        mPackagesByCategory = Collections.unmodifiableMap(removeNullValues(overlayPackages));
+        mWallpaperInfo = wallpaperInfo;
+        mWallpaperOptions = wallpaperOptions;
+        mPackagesByCategory = Collections.unmodifiableMap(overlayPackages);
     }
 
     @Override
@@ -160,12 +169,31 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
         mOverrideWallpaperAsset = null;
     }
 
+    public boolean shouldUseThemeWallpaper() {
+        return mOverrideWallpaper == null && mWallpaperInfo != null;
+    }
+
+    public Asset getWallpaperPreviewAsset(Context context) {
+        return mOverrideWallpaper != null ?
+                getOverrideWallpaperAsset(context) :
+                getPreviewInfo().wallpaperAsset;
+    }
+
     private Asset getOverrideWallpaperAsset(Context context) {
         if (mOverrideWallpaperAsset == null) {
             mOverrideWallpaperAsset = new BitmapCachingAsset(context,
                     mOverrideWallpaper.getThumbAsset(context));
         }
         return mOverrideWallpaperAsset;
+    }
+
+    public WallpaperInfo getWallpaperInfo() {
+        return mWallpaperInfo;
+    }
+
+    @Nullable
+    public String getWallpaperOptions() {
+        return mWallpaperOptions;
     }
 
     boolean isDefault() {
@@ -215,13 +243,6 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
         }
     }
 
-    private Map<String, String> removeNullValues(Map<String, String> map) {
-        return map.entrySet()
-                .stream()
-                .filter(entry -> entry.getValue() != null)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
-
     protected CharSequence getContentDescription(Context context) {
         if (mContentDescription == null) {
             CharSequence defaultName = context.getString(R.string.default_theme_title);
@@ -259,34 +280,14 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
         @ColorInt public final int colorAccentDark;
         public final List<Drawable> icons;
         public final Drawable shapeDrawable;
-        public final List<ShapeAppIcon> shapeAppIcons;
+        @Nullable public final Asset wallpaperAsset;
+        public final List<Drawable> shapeAppIcons;
         @Dimension public final int bottomSheeetCornerRadius;
-
-        /** A class to represent an App icon and its name. */
-        public static class ShapeAppIcon {
-            private Drawable mIconDrawable;
-            private CharSequence mAppName;
-
-            public ShapeAppIcon(Drawable icon, CharSequence appName) {
-                mIconDrawable = icon;
-                mAppName = appName;
-            }
-
-            /** Returns the app icon drawable. */
-            public Drawable getDrawable() {
-                return mIconDrawable;
-            }
-
-            /** Returns the app name. */
-            public CharSequence getAppName() {
-                return mAppName;
-            }
-        }
 
         private PreviewInfo(Context context, Typeface bodyFontFamily, Typeface headlineFontFamily,
                 int colorAccentLight, int colorAccentDark, List<Drawable> icons,
                 Drawable shapeDrawable, @Dimension int cornerRadius,
-                List<ShapeAppIcon> shapeAppIcons) {
+                @Nullable Asset wallpaperAsset, List<Drawable> shapeAppIcons) {
             this.bodyFontFamily = bodyFontFamily;
             this.headlineFontFamily = headlineFontFamily;
             this.colorAccentLight = colorAccentLight;
@@ -294,6 +295,8 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
             this.icons = icons;
             this.shapeDrawable = shapeDrawable;
             this.bottomSheeetCornerRadius = cornerRadius;
+            this.wallpaperAsset = wallpaperAsset == null
+                    ? null : new BitmapCachingAsset(context, wallpaperAsset);
             this.shapeAppIcons = shapeAppIcons;
         }
 
@@ -320,16 +323,20 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
         private Path mShapePath;
         private boolean mIsDefault;
         @Dimension private int mCornerRadius;
+        private Asset mWallpaperAsset;
+        private WallpaperInfo mWallpaperInfo;
+        private String mWallpaperOptions;
         protected Map<String, String> mPackages = new HashMap<>();
-        private List<ShapeAppIcon> mAppIcons = new ArrayList<>();
+        private List<Drawable> mAppIcons = new ArrayList<>();
 
         public ThemeBundle build(Context context) {
-            return new ThemeBundle(mTitle, mPackages, mIsDefault, createPreviewInfo(context));
+            return new ThemeBundle(mTitle, mPackages, mIsDefault, mWallpaperInfo, mWallpaperOptions,
+                    createPreviewInfo(context));
         }
 
         public PreviewInfo createPreviewInfo(Context context) {
             ShapeDrawable shapeDrawable = null;
-            List<ShapeAppIcon> shapeIcons = new ArrayList<>();
+            List<Drawable> shapeIcons = new ArrayList<>();
             Path path = mShapePath;
             if (!TextUtils.isEmpty(mPathString)) {
                 path = PathParser.createPathFromPathData(mPathString);
@@ -339,15 +346,12 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
                 shapeDrawable = new ShapeDrawable(shape);
                 shapeDrawable.setIntrinsicHeight((int) PATH_SIZE);
                 shapeDrawable.setIntrinsicWidth((int) PATH_SIZE);
-                for (ShapeAppIcon icon : mAppIcons) {
-                    Drawable drawable = icon.getDrawable();
-                    if (drawable instanceof AdaptiveIconDrawable) {
-                        AdaptiveIconDrawable adaptiveIcon = (AdaptiveIconDrawable) drawable;
-                        shapeIcons.add(new ShapeAppIcon(
-                                new DynamicAdaptiveIconDrawable(adaptiveIcon.getBackground(),
-                                        adaptiveIcon.getForeground(), path),
-                                icon.getAppName()));
-                    } else if (drawable instanceof DynamicAdaptiveIconDrawable) {
+                for (Drawable icon : mAppIcons) {
+                    if (icon instanceof AdaptiveIconDrawable) {
+                        AdaptiveIconDrawable adaptiveIcon = (AdaptiveIconDrawable) icon;
+                        shapeIcons.add(new DynamicAdaptiveIconDrawable(adaptiveIcon.getBackground(),
+                                adaptiveIcon.getForeground(), path));
+                    } else if (icon instanceof DynamicAdaptiveIconDrawable) {
                         shapeIcons.add(icon);
                     }
                     // TODO: add iconloader library's legacy treatment helper methods for
@@ -355,7 +359,8 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
                 }
             }
             return new PreviewInfo(context, mBodyFontFamily, mHeadlineFontFamily, mColorAccentLight,
-                    mColorAccentDark, mIcons, shapeDrawable, mCornerRadius, shapeIcons);
+                    mColorAccentDark, mIcons, shapeDrawable, mCornerRadius,
+                    mWallpaperAsset, shapeIcons);
         }
 
         public Map<String, String> getPackages() {
@@ -411,14 +416,37 @@ public class ThemeBundle implements CustomizationOption<ThemeBundle> {
             return this;
         }
 
+        public Builder setWallpaperInfo(String wallpaperPackageName, String wallpaperResName,
+                String themeId, @DrawableRes int wallpaperResId, @StringRes int titleResId,
+                @StringRes int attributionResId, @StringRes int actionUrlResId) {
+            mWallpaperInfo = new ThemeBundledWallpaperInfo(wallpaperPackageName, wallpaperResName,
+                    themeId, wallpaperResId, titleResId, attributionResId, actionUrlResId);
+            return this;
+        }
+
+        public Builder setLiveWallpaperInfo(LiveWallpaperInfo info) {
+            mWallpaperInfo = info;
+            return this;
+        }
+
+
+        public Builder setWallpaperAsset(Asset wallpaperAsset) {
+            mWallpaperAsset = wallpaperAsset;
+            return this;
+        }
+
+        public Builder setWallpaperOptions(String wallpaperOptions) {
+            mWallpaperOptions = wallpaperOptions;
+            return this;
+        }
+
         public Builder asDefault() {
             mIsDefault = true;
             return this;
         }
 
-        public Builder setShapePreviewIcons(List<ShapeAppIcon> appIcons) {
-            mAppIcons.clear();
-            mAppIcons.addAll(appIcons);
+        public Builder addShapePreviewIcon(Drawable appIcon) {
+            mAppIcons.add(appIcon);
             return this;
         }
 

@@ -65,13 +65,11 @@ public class WallpapersInjector extends BaseWallpaperInjector {
 
     @Override
     public Fragment getPreviewFragment(
-            Context context,
-            WallpaperInfo wallpaperInfo,
-            int mode,
-            boolean viewAsHome,
-            boolean testingModeEnabled) {
-        return ImagePreviewFragment.newInstance(wallpaperInfo, mode, viewAsHome,
-                testingModeEnabled);
+        Context context,
+        WallpaperInfo wallpaperInfo,
+        int mode,
+        boolean testingModeEnabled) {
+        return ImagePreviewFragment.newInstance(wallpaperInfo, mode, testingModeEnabled);
     }
 
     @Override

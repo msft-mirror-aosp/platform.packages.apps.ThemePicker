@@ -33,8 +33,7 @@
         android:id="@+id/custom_theme_nav"
         android:layout_width="match_parent"
         android:layout_height="@dimen/custom_theme_nav_height"
-        android:paddingHorizontal="12dp"
-        android:background="?android:colorPrimary">
+        android:layout_marginHorizontal="12dp">
         <Button
             android:id="@+id/previous_button"
             style="@style/ActionSecondaryButton"

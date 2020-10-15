@@ -17,6 +17,7 @@ package com.android.customization.model.grid;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -57,36 +58,40 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
 
     @Override
     public void fetchOptions(OptionsFetchedListener<GridOption> callback, boolean reload) {
-        new FetchTask(mProvider, callback, reload).execute();
+        new FetchTask(mProvider, callback).execute();
+    }
+
+    /** See if using surface view to render grid options */
+    public boolean usesSurfaceView() {
+        return mProvider.usesSurfaceView();
     }
 
     /** Call through content provider API to render preview */
-    public Bundle renderPreview(Bundle bundle, String gridName) {
-        return mProvider.renderPreview(gridName, bundle);
+    public void renderPreview(Bundle bundle, String gridName) {
+        mProvider.renderPreview(gridName, bundle);
     }
 
-    private static class FetchTask extends AsyncTask<Void, Void, List<GridOption>> {
+    private static class FetchTask extends AsyncTask<Void, Void, Pair<List<GridOption>, String>> {
         private final LauncherGridOptionsProvider mProvider;
         @Nullable private final OptionsFetchedListener<GridOption> mCallback;
-        private final boolean mReload;
 
         private FetchTask(@NonNull LauncherGridOptionsProvider provider,
-                @Nullable OptionsFetchedListener<GridOption> callback, boolean reload) {
+                @Nullable OptionsFetchedListener<GridOption> callback) {
             mCallback = callback;
             mProvider = provider;
-            mReload = reload;
         }
 
         @Override
-        protected List<GridOption> doInBackground(Void[] params) {
-            return mProvider.fetch(mReload);
+        protected Pair<List<GridOption>, String> doInBackground(Void[] params) {
+            return mProvider.fetch(false);
         }
 
         @Override
-        protected void onPostExecute(List<GridOption> gridOptions) {
+        protected void onPostExecute(Pair<List<GridOption>, String> gridOptionsResult) {
             if (mCallback != null) {
-                if (gridOptions != null && !gridOptions.isEmpty()) {
-                    mCallback.onOptionsLoaded(gridOptions);
+                if (gridOptionsResult != null && gridOptionsResult.first != null
+                        && !gridOptionsResult.first.isEmpty()) {
+                    mCallback.onOptionsLoaded(gridOptionsResult.first);
                 } else {
                     mCallback.onError(null);
                 }

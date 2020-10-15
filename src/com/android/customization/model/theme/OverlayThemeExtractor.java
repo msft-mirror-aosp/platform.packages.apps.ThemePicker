@@ -8,7 +8,6 @@ import static com.android.customization.model.ResourceConstants.SYSUI_PACKAGE;
 import android.content.Context;
 import android.content.om.OverlayInfo;
 import android.content.om.OverlayManager;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
@@ -23,12 +22,9 @@ import androidx.annotation.Nullable;
 
 import com.android.customization.model.ResourceConstants;
 import com.android.customization.model.theme.ThemeBundle.Builder;
-import com.android.customization.model.theme.ThemeBundle.PreviewInfo.ShapeAppIcon;
 import com.android.wallpaper.R;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -101,26 +97,16 @@ class OverlayThemeExtractor {
     }
 
     private void addShapePreviewIcons(Builder builder) {
-        List<ShapeAppIcon> icons = new ArrayList<>();
         for (String packageName : mShapePreviewIconPackages) {
-            Drawable icon = null;
-            CharSequence name = null;
             try {
-                icon = mContext.getPackageManager().getApplicationIcon(packageName);
-                // Add the shape icon app name.
-                ApplicationInfo appInfo = mContext.getPackageManager()
-                        .getApplicationInfo(packageName, /* flag= */ 0);
-                name = mContext.getPackageManager().getApplicationLabel(appInfo);
+                builder.addShapePreviewIcon(
+                        mContext.getPackageManager().getApplicationIcon(
+                                packageName));
             } catch (NameNotFoundException e) {
                 Log.d(TAG, "Couldn't find app " + packageName
                         + ", won't use it for icon shape preview");
-            } finally {
-                if (icon != null && !TextUtils.isEmpty(name)) {
-                    icons.add(new ShapeAppIcon(icon, name));
-                }
             }
         }
-        builder.setShapePreviewIcons(icons);
     }
 
     void addNoPreviewIconOverlay(Builder builder, String overlayPackage) {
