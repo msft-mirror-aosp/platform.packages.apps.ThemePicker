@@ -19,6 +19,8 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := ThemePickerRoboTests
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
+LOCAL_LICENSE_CONDITIONS := notice
 LOCAL_SDK_VERSION := system_current
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_STATIC_JAVA_LIBRARIES := \
@@ -27,7 +29,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
     mockito-robolectric-prebuilt \
     truth-prebuilt
 LOCAL_JAVA_LIBRARIES := \
-    platform-robolectric-3.6.2-prebuilt
+    platform-robolectric-4.5.1-prebuilt
 
 LOCAL_JAVA_RESOURCE_DIRS := config
 
@@ -42,6 +44,8 @@ include $(BUILD_STATIC_JAVA_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := RunThemePickerRoboTests
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
+LOCAL_LICENSE_CONDITIONS := notice
 LOCAL_SDK_VERSION := system_current
 LOCAL_JAVA_LIBRARIES := \
     ThemePickerRoboTests
