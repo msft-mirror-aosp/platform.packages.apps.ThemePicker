@@ -35,10 +35,13 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.FrameLayout;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.MarginPageTransformer;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.android.customization.model.CustomizationManager;
@@ -51,6 +54,7 @@ import com.android.wallpaper.R;
 import com.android.wallpaper.model.CustomizationSectionController;
 import com.android.wallpaper.model.WallpaperColorsViewModel;
 import com.android.wallpaper.module.InjectorProvider;
+import com.android.wallpaper.module.LargeScreenMultiPanesChecker;
 import com.android.wallpaper.widget.PageIndicator;
 import com.android.wallpaper.widget.SeparatedTabLayout;
 
@@ -59,6 +63,7 @@ import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -68,6 +73,10 @@ public class ColorSectionController implements CustomizationSectionController<Co
 
     private static final String TAG = "ColorSectionController";
     private static final String KEY_COLOR_TAB_POSITION = "COLOR_TAB_POSITION";
+    private static final String KEY_COLOR_PAGE_POSITION = "COLOR_PAGE_POSITION";
+    private static final String ID_VIEWPAGER = "ColorSectionController_colorSectionViewPager";
+    private static final String ID_ITEMVIEW = "ColorSectionController_itemView";
+    private static final String ID_CONTAINER = "ColorSectionController_container";
     private static final long MIN_COLOR_APPLY_PERIOD = 500L;
 
     private static final int WALLPAPER_TAB_INDEX = 0;
@@ -78,9 +87,9 @@ public class ColorSectionController implements CustomizationSectionController<Co
     private final WallpaperColorsViewModel mWallpaperColorsViewModel;
     private final LifecycleOwner mLifecycleOwner;
     private final ColorSectionAdapter mColorSectionAdapter = new ColorSectionAdapter();
-    private final List<ColorOption> mWallpaperColorOptions = new ArrayList<>();
-    private final List<ColorOption> mPresetColorOptions = new ArrayList<>();
 
+    private List<ColorOption> mWallpaperColorOptions = new ArrayList<>();
+    private List<ColorOption> mPresetColorOptions = new ArrayList<>();
     private ViewPager2 mColorSectionViewPager;
     private ColorOption mSelectedColor;
     private SeparatedTabLayout mTabLayout;
@@ -91,8 +100,11 @@ public class ColorSectionController implements CustomizationSectionController<Co
     private boolean mHomeWallpaperColorsReady;
     private boolean mLockWallpaperColorsReady;
     private Optional<Integer> mTabPositionToRestore = Optional.empty();
+    private Optional<Integer>[] mPagePositionToRestore =
+            new Optional[]{Optional.empty(), Optional.empty()};
     private long mLastColorApplyingTime = 0L;
     private ColorSectionView mColorSectionView;
+    private boolean mIsMultiPane;
 
     private static int getNumPages(int optionsPerPage, int totalOptions) {
         return (int) Math.ceil((float) totalOptions / optionsPerPage);
@@ -106,10 +118,38 @@ public class ColorSectionController implements CustomizationSectionController<Co
                 new OverlayManagerCompat(activity));
         mWallpaperColorsViewModel = viewModel;
         mLifecycleOwner = lifecycleOwner;
+        mIsMultiPane = new LargeScreenMultiPanesChecker().isMultiPanesEnabled(activity);
 
-        if (savedInstanceState != null && savedInstanceState.containsKey(KEY_COLOR_TAB_POSITION)) {
-            mTabPositionToRestore = Optional.of(savedInstanceState.getInt(KEY_COLOR_TAB_POSITION));
+        if (savedInstanceState != null) {
+            if (savedInstanceState.containsKey(KEY_COLOR_TAB_POSITION)) {
+                mTabPositionToRestore = Optional.of(
+                        savedInstanceState.getInt(KEY_COLOR_TAB_POSITION));
+            }
+
+            for (int i = 0; i < mPagePositionToRestore.length; i++) {
+                String keyColorPage = getPagePositionKey(i);
+                if (keyColorPage != null && savedInstanceState.containsKey(keyColorPage)) {
+                    setPagePositionToRestore(i, savedInstanceState.getInt(keyColorPage));
+                }
+            }
         }
+    }
+
+    private String getPagePositionKey(int index) {
+        return String.format(Locale.US, "%s_%d", KEY_COLOR_PAGE_POSITION, index);
+    }
+
+    private void setPagePositionToRestore(int pagePositionKeyIndex, int pagePosition) {
+        if (pagePositionKeyIndex >= 0 && pagePositionKeyIndex < mPagePositionToRestore.length) {
+            mPagePositionToRestore[pagePositionKeyIndex] = Optional.of(pagePosition);
+        }
+    }
+
+    private int getPagePositionToRestore(int pagePositionKeyIndex, int defaultPagePosition) {
+        if (pagePositionKeyIndex >= 0 && pagePositionKeyIndex < mPagePositionToRestore.length) {
+            return mPagePositionToRestore[pagePositionKeyIndex].orElse(defaultPagePosition);
+        }
+        return 0;
     }
 
     @Override
@@ -122,6 +162,7 @@ public class ColorSectionController implements CustomizationSectionController<Co
         mColorSectionView = (ColorSectionView) LayoutInflater.from(context).inflate(
                 R.layout.color_section_view, /* root= */ null);
         mColorSectionViewPager = mColorSectionView.findViewById(R.id.color_section_view_pager);
+        mColorSectionViewPager.setAccessibilityDelegate(createAccessibilityDelegate(ID_VIEWPAGER));
         mColorSectionViewPager.setAdapter(mColorSectionAdapter);
         mColorSectionViewPager.setUserInputEnabled(false);
         if (ColorProvider.themeStyleEnabled) {
@@ -153,6 +194,10 @@ public class ColorSectionController implements CustomizationSectionController<Co
         if (mColorSectionViewPager != null) {
             savedInstanceState.putInt(KEY_COLOR_TAB_POSITION,
                     mColorSectionViewPager.getCurrentItem());
+
+            for (int i = 0; i < mPagePositionToRestore.length; i++) {
+                savedInstanceState.putInt(getPagePositionKey(i), getPagePositionToRestore(i, 0));
+            }
         }
     }
 
@@ -167,16 +212,17 @@ public class ColorSectionController implements CustomizationSectionController<Co
         mColorManager.fetchOptions(new CustomizationManager.OptionsFetchedListener<ColorOption>() {
             @Override
             public void onOptionsLoaded(List<ColorOption> options) {
-                mWallpaperColorOptions.clear();
-                mPresetColorOptions.clear();
-
+                List<ColorOption> wallpaperColorOptions = new ArrayList<>();
+                List<ColorOption> presetColorOptions = new ArrayList<>();
                 for (ColorOption option : options) {
                     if (option instanceof ColorSeedOption) {
-                        mWallpaperColorOptions.add(option);
+                        wallpaperColorOptions.add(option);
                     } else if (option instanceof ColorBundle) {
-                        mPresetColorOptions.add(option);
+                        presetColorOptions.add(option);
                     }
                 }
+                mWallpaperColorOptions = wallpaperColorOptions;
+                mPresetColorOptions = presetColorOptions;
                 mSelectedColor = findActiveColorOption(mWallpaperColorOptions,
                         mPresetColorOptions);
                 mTabLayout.post(()-> setUpColorViewPager());
@@ -219,51 +265,48 @@ public class ColorSectionController implements CustomizationSectionController<Co
         mColorSectionViewPager.setUserInputEnabled(!ColorProvider.themeStyleEnabled);
     }
 
-    private void setupWallpaperColorPages(ViewPager2 container, int colorsPerPage,
-            PageIndicator pageIndicator) {
-        container.setAdapter(new ColorPageAdapter(mWallpaperColorOptions, /* pageEnabled= */ true,
+    private void setupColorPages(ViewPager2 container, int colorsPerPage, int sectionPosition,
+            List<ColorOption> options, PageIndicator pageIndicator) {
+        container.setAdapter(new ColorPageAdapter(options, /* pageEnabled= */ true,
                 colorsPerPage));
         if (ColorProvider.themeStyleEnabled) {
             // Update page index to show selected items.
-            int selectedIndex = mWallpaperColorOptions.indexOf(mSelectedColor);
-            if (selectedIndex >= 0 && colorsPerPage != 0) {
+            int selectedIndex = options.indexOf(mSelectedColor);
+            if (colorsPerPage != 0) {
                 int pageIndex = selectedIndex / colorsPerPage;
-                container.setCurrentItem(pageIndex, /* smoothScroll= */ false);
+                int position = getPagePositionToRestore(sectionPosition, pageIndex);
+                container.setCurrentItem(position, /* smoothScroll= */ false);
             }
-            pageIndicator.setNumPages(getNumPages(colorsPerPage, mWallpaperColorOptions.size()));
-            registerOnPageChangeCallback(container, pageIndicator);
+            pageIndicator.setNumPages(getNumPages(colorsPerPage, options.size()));
+            registerOnPageChangeCallback(sectionPosition, container, pageIndicator);
         }
     }
 
-    private void setupPresetColorPages(ViewPager2 container, int colorsPerPage,
+    private void registerOnPageChangeCallback(int sectionPosition, ViewPager2 container,
             PageIndicator pageIndicator) {
-        container.setAdapter(new ColorPageAdapter(mPresetColorOptions, /* pageEnabled= */ true,
-                colorsPerPage));
-        if (ColorProvider.themeStyleEnabled) {
-            // Update page index to show selected items.
-            int selectedIndex = mPresetColorOptions.indexOf(mSelectedColor);
-            if (selectedIndex >= 0 && colorsPerPage != 0) {
-                int pageIndex = selectedIndex / colorsPerPage;
-                container.setCurrentItem(pageIndex, /* smoothScroll= */ false);
-            }
-            pageIndicator.setNumPages(getNumPages(colorsPerPage, mPresetColorOptions.size()));
-            registerOnPageChangeCallback(container, pageIndicator);
-        }
-    }
-
-    private void registerOnPageChangeCallback(ViewPager2 container, PageIndicator pageIndicator) {
         container.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
-                pageIndicator.setLocation(position);
+                if (mColorSectionViewPager.getCurrentItem() == sectionPosition) {
+                    pageIndicator.setLocation(getPagePosition(pageIndicator, position));
+                    setPagePositionToRestore(sectionPosition, position);
+                }
             }
 
             @Override
             public void onPageScrolled(int position, float positionOffset,
                     int positionOffsetPixels) {
                 super.onPageScrolled(position, positionOffset, positionOffsetPixels);
-                pageIndicator.setLocation(position);
+                if (mColorSectionViewPager.getCurrentItem() == sectionPosition) {
+                    pageIndicator.setLocation(getPagePosition(pageIndicator, position));
+                    setPagePositionToRestore(sectionPosition, position);
+                }
+            }
+
+            private int getPagePosition(PageIndicator pageIndicator, int position) {
+                return pageIndicator.isLayoutRtl() ? pageIndicator.getChildCount() - 1 - position
+                        : position;
             }
         });
     }
@@ -336,7 +379,7 @@ public class ColorSectionController implements CustomizationSectionController<Co
             public void onSuccess() {
                 mColorSectionView.announceForAccessibility(
                         mColorSectionView.getContext().getString(R.string.color_changed));
-                mEventLogger.logColorApplied(getColorAction(colorOption), colorOption.getIndex());
+                mEventLogger.logColorApplied(getColorAction(colorOption), colorOption);
             }
 
             @Override
@@ -368,6 +411,16 @@ public class ColorSectionController implements CustomizationSectionController<Co
         return action;
     }
 
+    private View.AccessibilityDelegate createAccessibilityDelegate(String id) {
+        return new View.AccessibilityDelegate() {
+            @Override
+            public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfo info) {
+                super.onInitializeAccessibilityNodeInfo(host, info);
+                info.setUniqueId(id);
+            }
+        };
+    }
+
     private class ColorSectionAdapter extends
             RecyclerView.Adapter<ColorSectionAdapter.ColorPageViewHolder> {
 
@@ -383,12 +436,12 @@ public class ColorSectionController implements CustomizationSectionController<Co
         public void onBindViewHolder(ColorPageViewHolder viewHolder, int position) {
             switch (position) {
                 case WALLPAPER_TAB_INDEX:
-                    setupWallpaperColorPages(viewHolder.mContainer, mNumColors,
-                            viewHolder.mPageIndicator);
+                    setupColorPages(viewHolder.mContainer, mNumColors, position,
+                            mWallpaperColorOptions, viewHolder.mPageIndicator);
                     break;
                 case PRESET_TAB_INDEX:
-                    setupPresetColorPages(viewHolder.mContainer, mNumColors,
-                            viewHolder.mPageIndicator);
+                    setupColorPages(viewHolder.mContainer, mNumColors, position,
+                            mPresetColorOptions, viewHolder.mPageIndicator);
                     break;
                 default:
                     break;
@@ -417,10 +470,24 @@ public class ColorSectionController implements CustomizationSectionController<Co
             ColorPageViewHolder(View itemView) {
                 super(itemView);
                 mContainer = itemView.findViewById(R.id.color_page_container);
+                // Correct scrolling goes under collapsing toolbar while scrolling oclor options.
+                mContainer.getChildAt(0).setNestedScrollingEnabled(false);
+                /**
+                 * Sets page transformer with margin to separate color pages and
+                 * sets color pages' padding to not scroll to window boundary if multi-pane case
+                 */
+                if (mIsMultiPane) {
+                    final int padding = itemView.getContext().getResources().getDimensionPixelSize(
+                            R.dimen.section_horizontal_padding);
+                    mContainer.setPageTransformer(new MarginPageTransformer(padding * 2));
+                    mContainer.setPadding(padding, /* top= */ 0, padding, /* bottom= */ 0);
+                }
                 mPageIndicator = itemView.findViewById(R.id.color_page_indicator);
                 if (ColorProvider.themeStyleEnabled) {
                     mPageIndicator.setVisibility(VISIBLE);
                 }
+                itemView.setAccessibilityDelegate(createAccessibilityDelegate(ID_ITEMVIEW));
+                mContainer.setAccessibilityDelegate(createAccessibilityDelegate(ID_CONTAINER));
             }
         }
     }
@@ -472,6 +539,15 @@ public class ColorSectionController implements CustomizationSectionController<Co
             ColorOptionViewHolder(View itemView) {
                 super(itemView);
                 mContainer = itemView.findViewById(R.id.color_option_container);
+                // Sets layout with margins for non multi-pane case to separate color options.
+                if (!mIsMultiPane) {
+                    final FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
+                            mContainer.getLayoutParams());
+                    final int margin = itemView.getContext().getResources().getDimensionPixelSize(
+                            R.dimen.section_horizontal_padding);
+                    layoutParams.setMargins(margin, /* top= */ 0, margin, /* bottom= */ 0);
+                    mContainer.setLayoutParams(layoutParams);
+                }
             }
         }
     }
