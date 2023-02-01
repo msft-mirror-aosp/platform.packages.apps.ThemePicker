@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Duvar kağıdı ve stil"</string>
     <string name="theme_title" msgid="2144932106319405101">"Stil"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Saat"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Özel Saat"</string>
+    <string name="clock_description" msgid="3563839327378948">"Özel saat seçin"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Özel saati değiştirin"</string>
     <string name="grid_title" msgid="1688173478777254123">"Uygulama tablosu"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Uygula"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Düzenlemek için dokunun"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Tema simgeleri"</string>
     <string name="beta_title" msgid="8703819523760746458">"Beta"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Uygulama ızgarasını değiştirin"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Duvar kağıdı renkleri"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Duvar kağıdı rengi"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Temel renkler"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Renk değişti"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Dinamik"</string>
 </resources>

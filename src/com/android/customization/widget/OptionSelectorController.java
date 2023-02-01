@@ -24,6 +24,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -43,6 +44,8 @@ import androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate;
 import com.android.customization.model.CustomizationManager;
 import com.android.customization.model.CustomizationOption;
 import com.android.wallpaper.R;
+import com.android.wallpaper.widget.GridPaddingDecoration;
+import com.android.wallpaper.widget.GridRowSpacerDecoration;
 
 import java.util.HashSet;
 import java.util.List;
@@ -77,12 +80,13 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
         int CENTER_CHANGE_COLOR_WHEN_NOT_SELECTED = 3;
     }
 
-    private static final float LINEAR_LAYOUT_HORIZONTAL_DISPLAY_OPTIONS_MAX = 4.35f;
+    private float mLinearLayoutHorizontalDisplayOptionsMax;
 
     private final RecyclerView mContainer;
     private final List<T> mOptions;
     private final boolean mUseGrid;
-    @CheckmarkStyle private final int mCheckmarkStyle;
+    @CheckmarkStyle
+    private final int mCheckmarkStyle;
 
     private final Set<OptionSelectedListener> mListeners = new HashSet<>();
     private RecyclerView.Adapter<TileViewHolder> mAdapter;
@@ -99,6 +103,10 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
         mOptions = options;
         mUseGrid = useGrid;
         mCheckmarkStyle = checkmarkStyle;
+        TypedValue typedValue = new TypedValue();
+        mContainer.getResources().getValue(R.dimen.linear_layout_horizontal_display_options_max,
+                typedValue, true);
+        mLinearLayoutHorizontalDisplayOptionsMax = typedValue.getFloat();
     }
 
     public void addListener(OptionSelectedListener listener) {
@@ -135,7 +143,6 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
     /**
      * Mark an option as the one which is currently applied on the device. This will result in a
      * check being displayed in the lower-right corner of the corresponding ViewHolder.
-     * @param option
      */
     public void setAppliedOption(T option) {
         if (!mOptions.contains(option)) {
@@ -151,6 +158,7 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
 
     /**
      * Notify that a given option has changed.
+     *
      * @param option the option that changed
      */
     public void optionChanged(T option) {
@@ -211,7 +219,7 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
                                     mContainer.getContext().getTheme()),
                             Gravity.CENTER, res.getDimensionPixelSize(R.dimen.center_check_size),
                             0, true);
-                }  else if (mCheckmarkStyle == CheckmarkStyle.CENTER_CHANGE_COLOR_WHEN_NOT_SELECTED
+                } else if (mCheckmarkStyle == CheckmarkStyle.CENTER_CHANGE_COLOR_WHEN_NOT_SELECTED
                         && option.equals(mAppliedOption)) {
                     int drawableRes = option.equals(mSelectedOption)
                             ? R.drawable.check_circle_grey_large
@@ -224,7 +232,7 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
                 } else if (option.equals(mAppliedOption)) {
                     // Initialize with "previewed" description if we don't show checkmark
                     holder.setContentDescription(mContainer.getContext(), option,
-                        R.string.option_previewed_description);
+                            R.string.option_previewed_description);
                 } else if (mCheckmarkStyle != CheckmarkStyle.NONE) {
                     if (mCheckmarkStyle == CheckmarkStyle.CENTER_CHANGE_COLOR_WHEN_NOT_SELECTED) {
                         if (option.equals(mSelectedOption)) {
@@ -276,67 +284,66 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
         };
 
         Resources res = mContainer.getContext().getResources();
-        if (mUseGrid) {
-            mContainer.setLayoutManager(new GridLayoutManager(mContainer.getContext(),
-                    res.getInteger(R.integer.options_grid_num_columns)));
-        } else {
-            mContainer.setLayoutManager(new LinearLayoutManager(mContainer.getContext(),
-                    LinearLayoutManager.HORIZONTAL, false));
-        }
-
         mContainer.setAdapter(mAdapter);
-
-        // Measure RecyclerView to get to the total amount of space used by all options.
-        mContainer.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int fixWidth = res.getDimensionPixelSize(R.dimen.options_container_width);
-        int availableWidth;
-        if (fixWidth == 0) {
-            DisplayMetrics metrics = new DisplayMetrics();
-            mContainer.getContext().getSystemService(WindowManager.class)
-                    .getDefaultDisplay().getMetrics(metrics);
-            availableWidth = metrics.widthPixels;
-        } else {
-            availableWidth = fixWidth;
-        }
-        int totalWidth = mContainer.getMeasuredWidth();
-        int widthPerItem = res.getDimensionPixelOffset(R.dimen.option_tile_width);
+        final int padding = res.getDimensionPixelSize(
+                R.dimen.option_tile_grid_padding_horizontal);
+        final int fixWidth = res.getDimensionPixelSize(R.dimen.options_container_width);
+        final DisplayMetrics metrics = new DisplayMetrics();
+        mContainer.getContext().getSystemService(WindowManager.class)
+                .getDefaultDisplay().getMetrics(metrics);
+        // This is based on the assumption that the parent view is the same width as the screen.
+        final int availableDynamicWidth = metrics.widthPixels - 2 * res.getDimensionPixelSize(
+                R.dimen.section_horizontal_padding);
+        final int availableWidth = (fixWidth != 0) ? fixWidth : availableDynamicWidth;
+        final boolean hasDecoration = mContainer.getItemDecorationCount() != 0;
 
         if (mUseGrid) {
             int numColumns = res.getInteger(R.integer.options_grid_num_columns);
-            int extraSpace = availableWidth - widthPerItem * numColumns;
-            while (extraSpace < 0) {
+            GridLayoutManager gridLayoutManager = new GridLayoutManager(mContainer.getContext(),
+                    numColumns);
+            mContainer.setLayoutManager(gridLayoutManager);
+            if (!hasDecoration) {
+                mContainer.addItemDecoration(new GridPaddingDecoration(padding, 0));
+            }
+            // Measure RecyclerView to get to the total amount of space used by all options.
+            mContainer.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            while (mContainer.getMeasuredWidth() > availableWidth && numColumns > 1) {
                 numColumns -= 1;
-                extraSpace = availableWidth - widthPerItem * numColumns;
+                gridLayoutManager.setSpanCount(numColumns);
+                mContainer.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            }
+            if (!hasDecoration && numColumns > 1) {
+                mContainer.addItemDecoration(new GridRowSpacerDecoration(2 * padding));
+            }
+        } else {
+            final int widthPerItem = res.getDimensionPixelSize(R.dimen.option_tile_width) + (
+                    hasDecoration ? 0 : 2 * padding);
+            mContainer.setLayoutManager(new LinearLayoutManager(mContainer.getContext(),
+                    LinearLayoutManager.HORIZONTAL, false));
+            int extraSpace = availableWidth - mContainer.getMeasuredWidth();
+            if (extraSpace >= 0) {
+                mContainer.setOverScrollMode(View.OVER_SCROLL_NEVER);
             }
 
-            if (mContainer.getLayoutManager() != null) {
-                ((GridLayoutManager) mContainer.getLayoutManager()).setSpanCount(numColumns);
+            if (mAdapter.getItemCount() >= mLinearLayoutHorizontalDisplayOptionsMax) {
+                int spaceBetweenItems = availableWidth
+                        - Math.round(widthPerItem * mLinearLayoutHorizontalDisplayOptionsMax)
+                        - mContainer.getPaddingLeft();
+                int itemEndMargin =
+                        spaceBetweenItems / (int) mLinearLayoutHorizontalDisplayOptionsMax;
+                if (itemEndMargin <= 0) {
+                    itemEndMargin = res.getDimensionPixelOffset(
+                            R.dimen.option_tile_margin_horizontal);
+                }
+                mContainer.addItemDecoration(new ItemEndHorizontalSpaceItemDecoration(
+                        mContainer.getContext(), itemEndMargin));
+                return;
             }
-            return;
-        }
 
-        int extraSpace = availableWidth - totalWidth;
-        if (extraSpace >= 0) {
-            mContainer.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            int spaceBetweenItems = extraSpace / (mAdapter.getItemCount() + 1);
+            int itemSideMargin = spaceBetweenItems / 2;
+            mContainer.addItemDecoration(new HorizontalSpacerItemDecoration(itemSideMargin));
         }
-
-        if (mAdapter.getItemCount() >= LINEAR_LAYOUT_HORIZONTAL_DISPLAY_OPTIONS_MAX) {
-            int spaceBetweenItems = availableWidth
-                    - Math.round(widthPerItem * LINEAR_LAYOUT_HORIZONTAL_DISPLAY_OPTIONS_MAX)
-                    - mContainer.getPaddingLeft();
-            int itemEndMargin =
-                    spaceBetweenItems / (int) LINEAR_LAYOUT_HORIZONTAL_DISPLAY_OPTIONS_MAX;
-            if (itemEndMargin <= 0) {
-                itemEndMargin = res.getDimensionPixelOffset(R.dimen.option_tile_margin_horizontal);
-            }
-            mContainer.addItemDecoration(new ItemEndHorizontalSpaceItemDecoration(
-                    mContainer.getContext(), itemEndMargin));
-            return;
-        }
-
-        int spaceBetweenItems = extraSpace / (mAdapter.getItemCount() + 1);
-        int itemSideMargin = spaceBetweenItems / 2;
-        mContainer.addItemDecoration(new HorizontalSpacerItemDecoration(itemSideMargin));
     }
 
     public void resetOptions(List<T> options) {
@@ -371,9 +378,10 @@ public class OptionSelectorController<T extends CustomizationOption<T>> {
         /**
          * Set the content description for this holder using the given string id.
          * If the option does not have a label, the description will be set on the tile view.
+         *
          * @param context The view's context
-         * @param option The customization option
-         * @param id Resource ID of the string to use for the content description
+         * @param option  The customization option
+         * @param id      Resource ID of the string to use for the content description
          */
         public void setContentDescription(Context context, CustomizationOption<?> option, int id) {
             title = option.getTitle();

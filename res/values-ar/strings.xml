@@ -17,9 +17,11 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="app_name" msgid="1647136562008520313">"الخلفية والنمط"</string>
+    <string name="app_name" msgid="1647136562008520313">"الخلفية والأسلوب"</string>
     <string name="theme_title" msgid="2144932106319405101">"النمط"</string>
-    <string name="clock_title" msgid="2126046720254613991">"الساعة"</string>
+    <string name="clock_title" msgid="1974314575211361352">"خلفية شاشة ساعة مخصّصة"</string>
+    <string name="clock_description" msgid="3563839327378948">"اختيار خلفية شاشة ساعة مخصّصة"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"تغيير خلفية شاشة ساعة مخصّصة"</string>
     <string name="grid_title" msgid="1688173478777254123">"شبكة التطبيقات"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"تطبيق"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"انقُر للتعديل."</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"رموز مستوحاة من موضوع معيّن"</string>
     <string name="beta_title" msgid="8703819523760746458">"تجريبي"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"تغيير شبكة التطبيقات"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"ألوان الخلفية"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"لون الخلفية"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"الألوان الأساسية"</string>
+    <string name="color_changed" msgid="7029571720331641235">"تم تغيير اللون."</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"ألوان ديناميكية"</string>
 </resources>

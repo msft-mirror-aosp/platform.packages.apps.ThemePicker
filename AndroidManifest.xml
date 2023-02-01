@@ -13,6 +13,8 @@
 
     <queries>
         <!-- Specific intents Wallpaper picker query for -->
+        <!-- Package for theme stub -->
+        <package android:name="com.android.customization.themes" />
         <!-- Intent filter with action SET_WALLPAPER -->
         <intent>
             <action android:name="android.intent.action.SET_WALLPAPER" />
@@ -57,9 +59,26 @@
             android:theme="@style/CustomizationTheme.NoActionBar"
             android:exported="false"/>
 
+        <activity
+            tools:node="replace"
+            android:name="com.android.wallpaper.picker.PassThroughCustomizationPickerActivity"
+            android:label="@string/app_name"
+            android:resizeableActivity="false"
+            android:theme="@style/CustomizationTheme.NoActionBar"
+            android:exported="false"/>
+
+        <activity
+            tools:node="replace"
+            android:name="com.android.wallpaper.picker.TrampolinePickerActivity"
+            android:label="@string/app_name"
+            android:relinquishTaskIdentity="true"
+            android:resizeableActivity="false"
+            android:theme="@style/CustomizationTheme.NoActionBar"
+            android:exported="false"/>
+
         <activity-alias
             android:name="com.android.customization.picker.CustomizationPickerActivity"
-            android:targetActivity="com.android.wallpaper.picker.CustomizationPickerActivity"
+            android:targetActivity="com.android.wallpaper.picker.TrampolinePickerActivity"
             android:label="@string/app_name"
             android:exported="true">
              <intent-filter>

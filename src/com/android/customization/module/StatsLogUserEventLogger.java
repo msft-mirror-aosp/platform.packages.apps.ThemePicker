@@ -28,7 +28,6 @@ import static com.android.systemui.shared.system.SysUiStatsLog.STYLE_UICHANGED__
 import static com.android.systemui.shared.system.SysUiStatsLog.STYLE_UICHANGED__LAUNCHED_PREFERENCE__LAUNCHED_SETTINGS_SEARCH;
 import static com.android.systemui.shared.system.SysUiStatsLog.STYLE_UICHANGED__LAUNCHED_PREFERENCE__LAUNCHED_SUW;
 import static com.android.systemui.shared.system.SysUiStatsLog.STYLE_UICHANGED__LAUNCHED_PREFERENCE__LAUNCHED_TIPS;
-import static com.android.systemui.shared.system.SysUiStatsLog.STYLE_UI_CHANGED;
 import static com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SETTINGS_SEARCH;
 import static com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SOURCE_DEEP_LINK;
 import static com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SOURCE_LAUNCHER;
@@ -38,16 +37,22 @@ import static com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SOURCE_TIPS;
 import static com.android.wallpaper.util.LaunchSourceUtils.WALLPAPER_LAUNCH_SOURCE;
 
 import android.app.WallpaperManager;
+import android.content.Context;
 import android.content.Intent;
 import android.stats.style.StyleEnums;
+import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
 
 import com.android.customization.model.clock.Clockface;
+import com.android.customization.model.color.ColorOption;
 import com.android.customization.model.grid.GridOption;
 import com.android.customization.model.theme.ThemeBundle;
-import com.android.systemui.shared.system.SysUiStatsLog;
+import com.android.wallpaper.module.Injector;
+import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.module.NoOpUserEventLogger;
+import com.android.wallpaper.module.WallpaperPreferences;
+import com.android.wallpaper.module.WallpaperStatusChecker;
 
 import java.util.Map;
 import java.util.Objects;
@@ -58,70 +63,126 @@ import java.util.Objects;
 public class StatsLogUserEventLogger extends NoOpUserEventLogger implements ThemesUserEventLogger {
 
     private static final String TAG = "StatsLogUserEventLogger";
+    private final Context mContext;
+    private final WallpaperPreferences mPreferences;
+    private final WallpaperStatusChecker mWallpaperStatusChecker;
+
+    public StatsLogUserEventLogger(Context appContext) {
+        mContext = appContext;
+        Injector injector = InjectorProvider.getInjector();
+        mPreferences = injector.getPreferences(appContext);
+        mWallpaperStatusChecker = injector.getWallpaperStatusChecker();
+    }
 
     @Override
     public void logAppLaunched(Intent launchSource) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, STYLE_UICHANGED__ACTION__APP_LAUNCHED, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, getAppLaunchSource(launchSource));
+        new SysUiStatsLogger()
+                .setAction(STYLE_UICHANGED__ACTION__APP_LAUNCHED)
+                .setLaunchedPreference(getAppLaunchSource(launchSource))
+                .log();
     }
 
     @Override
     public void logResumed(boolean provisioned, boolean wallpaper) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.ONRESUME, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.ONRESUME)
+                .log();
     }
 
     @Override
     public void logStopped() {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.ONSTOP, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.ONSTOP)
+                .log();
     }
 
     @Override
     public void logActionClicked(String collectionId, int actionLabelResId) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.WALLPAPER_EXPLORE, 0, 0, 0, 0, 0,
-                getCollectionIdHashCode(collectionId), 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.WALLPAPER_EXPLORE)
+                .setWallpaperCategoryHash(getIdHashCode(collectionId))
+                .log();
     }
 
     @Override
     public void logIndividualWallpaperSelected(String collectionId) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.WALLPAPER_SELECT, 0, 0, 0, 0, 0,
-                getCollectionIdHashCode(collectionId), 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.WALLPAPER_SELECT)
+                .setWallpaperCategoryHash(getIdHashCode(collectionId))
+                .log();
     }
 
     @Override
     public void logCategorySelected(String collectionId) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.WALLPAPER_OPEN_CATEGORY,
-                0, 0, 0, 0, 0,
-                getCollectionIdHashCode(collectionId),
-                0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.WALLPAPER_OPEN_CATEGORY)
+                .setWallpaperCategoryHash(getIdHashCode(collectionId))
+                .log();
     }
 
     @Override
     public void logLiveWallpaperInfoSelected(String collectionId, @Nullable String wallpaperId) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.LIVE_WALLPAPER_INFO_SELECT,
-                0, 0, 0, 0, 0,
-                getCollectionIdHashCode(collectionId),
-                wallpaperId != null ? wallpaperId.hashCode() : 0,
-                0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.LIVE_WALLPAPER_INFO_SELECT)
+                .setWallpaperCategoryHash(getIdHashCode(collectionId))
+                .setWallpaperIdHash(getIdHashCode(wallpaperId))
+                .log();
     }
 
     @Override
     public void logLiveWallpaperCustomizeSelected(String collectionId,
             @Nullable String wallpaperId) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.LIVE_WALLPAPER_CUSTOMIZE_SELECT,
-                0, 0, 0, 0, 0,
-                getCollectionIdHashCode(collectionId),
-                wallpaperId != null ? wallpaperId.hashCode() : 0,
-                0, 0, 0, 0);
+        new SysUiStatsLogger().setAction(StyleEnums.LIVE_WALLPAPER_CUSTOMIZE_SELECT)
+                .setWallpaperCategoryHash(getIdHashCode(collectionId))
+                .setWallpaperIdHash(getIdHashCode(wallpaperId))
+                .log();
+
     }
 
     @Override
-    public void logWallpaperSet(String collectionId, @Nullable String wallpaperId) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.WALLPAPER_APPLIED,
-                0, 0, 0, 0, 0,
-                getCollectionIdHashCode(collectionId),
-                wallpaperId != null ? wallpaperId.hashCode() : 0,
-                0, 0, 0, 0);
+    public void logSnapshot() {
+        final boolean isLockWallpaperSet = mWallpaperStatusChecker.isLockWallpaperSet(mContext);
+        final String homeCollectionId = mPreferences.getHomeWallpaperCollectionId();
+        final String homeRemoteId = mPreferences.getHomeWallpaperRemoteId();
+        final String effects = mPreferences.getWallpaperEffects();
+        String homeWallpaperId = TextUtils.isEmpty(homeRemoteId)
+                ? mPreferences.getHomeWallpaperServiceName() : homeRemoteId;
+        String lockCollectionId = isLockWallpaperSet ? mPreferences.getLockWallpaperCollectionId()
+                : homeCollectionId;
+        String lockWallpaperId = isLockWallpaperSet ? mPreferences.getLockWallpaperRemoteId()
+                : homeWallpaperId;
+
+        new SysUiStatsLogger().setAction(StyleEnums.SNAPSHOT)
+                .setWallpaperCategoryHash(getIdHashCode(homeCollectionId))
+                .setWallpaperIdHash(getIdHashCode(homeWallpaperId))
+                .setLockWallpaperCategoryHash(getIdHashCode(lockCollectionId))
+                .setLockWallpaperIdHash(getIdHashCode(lockWallpaperId))
+                .setFirstLaunchDateSinceSetup(mPreferences.getFirstLaunchDateSinceSetup())
+                .setFirstWallpaperApplyDateSinceSetup(
+                        mPreferences.getFirstWallpaperApplyDateSinceSetup())
+                .setAppLaunchCount(mPreferences.getAppLaunchCount())
+                .setEffectIdHash(getIdHashCode(effects))
+                .log();
+    }
+
+    @Override
+    public void logWallpaperSet(String collectionId, @Nullable String wallpaperId,
+            @Nullable String effects) {
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.WALLPAPER_APPLIED)
+                .setWallpaperCategoryHash(getIdHashCode(collectionId))
+                .setWallpaperIdHash(getIdHashCode(wallpaperId))
+                .setEffectIdHash(getIdHashCode(effects))
+                .log();
+    }
+
+    @Override
+    public void logEffectApply(String effect, @EffectStatus int status) {
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.WALLPAPER_EFFECT_APPLIED)
+                .setEffectPreference(status)
+                .setEffectIdHash(getIdHashCode(effect))
+                .log();
     }
 
     @Nullable
@@ -132,60 +193,67 @@ public class StatsLogUserEventLogger extends NoOpUserEventLogger implements Them
 
     @Override
     public void logThemeSelected(ThemeBundle theme, boolean isCustomTheme) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.PICKER_SELECT,
-                Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_COLOR)),
-                Objects.hashCode(getThemePackage(theme,OVERLAY_CATEGORY_FONT)),
-                Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_SHAPE)),
-                0, 0, 0, 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.PICKER_SELECT)
+                .setColorPackageHash(
+                        Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_COLOR)))
+                .setFontPackageHash(Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_FONT)))
+                .setShapePackageHash(
+                        Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_SHAPE)))
+                .log();
     }
 
     @Override
     public void logThemeApplied(ThemeBundle theme, boolean isCustomTheme) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.PICKER_APPLIED,
-                Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_COLOR)),
-                Objects.hashCode(getThemePackage(theme,OVERLAY_CATEGORY_FONT)),
-                Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_SHAPE)),
-                0, 0, 0, 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.PICKER_APPLIED)
+                .setColorPackageHash(
+                        Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_COLOR)))
+                .setFontPackageHash(Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_FONT)))
+                .setShapePackageHash(
+                        Objects.hashCode(getThemePackage(theme, OVERLAY_CATEGORY_SHAPE)))
+                .log();
     }
 
     @Override
-    public void logColorApplied(int action, int colorIndex) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, action,
-                0, 0, 0, 0, 0, 0, 0,
-                colorIndex,
-                0, 0, 0);
+    public void logColorApplied(int action, ColorOption colorOption) {
+        new SysUiStatsLogger()
+                .setAction(action)
+                .setColorPreference(colorOption.getIndex())
+                .setColorVariant(colorOption.getStyle().ordinal() + 1)
+                .log();
     }
 
     @Override
     public void logClockSelected(Clockface clock) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.PICKER_SELECT,
-                0, 0, 0,
-                Objects.hashCode(clock.getId()),
-                0, 0, 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.PICKER_SELECT)
+                .setClockPackageHash(Objects.hashCode(clock.getId()))
+                .log();
     }
 
     @Override
     public void logClockApplied(Clockface clock) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.PICKER_APPLIED,
-                0, 0, 0,
-                Objects.hashCode(clock.getId()),
-                0, 0, 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.PICKER_APPLIED)
+                .setClockPackageHash(Objects.hashCode(clock.getId()))
+                .log();
     }
 
     @Override
     public void logGridSelected(GridOption grid) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.PICKER_SELECT,
-                0, 0, 0, 0,
-                grid.cols,
-                0, 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.PICKER_SELECT)
+                .setLauncherGrid(grid.cols)
+                .log();
     }
 
     @Override
     public void logGridApplied(GridOption grid) {
-        SysUiStatsLog.write(STYLE_UI_CHANGED, StyleEnums.PICKER_APPLIED,
-                0, 0, 0, 0,
-                grid.cols,
-                0, 0, 0, 0, 0, 0);
+        new SysUiStatsLogger()
+                .setAction(StyleEnums.PICKER_APPLIED)
+                .setLauncherGrid(grid.cols)
+                .log();
     }
 
     private int getAppLaunchSource(Intent launchSource) {
@@ -217,7 +285,7 @@ public class StatsLogUserEventLogger extends NoOpUserEventLogger implements Them
         }
     }
 
-    private int getCollectionIdHashCode(String collectionId) {
-        return collectionId != null ? collectionId.hashCode() : 0;
+    private int getIdHashCode(String id) {
+        return id != null ? id.hashCode() : 0;
     }
 }

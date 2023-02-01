@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Háttérkép és stílus"</string>
     <string name="theme_title" msgid="2144932106319405101">"Stílus"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Óra"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Egyedi óra"</string>
+    <string name="clock_description" msgid="3563839327378948">"Egyedi óra választása"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Egyedi óra módosítása"</string>
     <string name="grid_title" msgid="1688173478777254123">"Alkalmazásrács"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Alkalmaz"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Koppintson a szerkesztéshez"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Tematikus ikonok"</string>
     <string name="beta_title" msgid="8703819523760746458">"Béta"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Alkalmazásrács módosítása"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Háttérképszínek"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Háttérkép színe"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Alapszínek"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Szín módosítva"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Dinamikus"</string>
 </resources>

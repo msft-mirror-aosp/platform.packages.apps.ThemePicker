@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Bakgrunn og stil"</string>
     <string name="theme_title" msgid="2144932106319405101">"Stil"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Klokke"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Tilpasset klokke"</string>
+    <string name="clock_description" msgid="3563839327378948">"Velg en tilpasset klokke"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Endre en tilpasset klokke"</string>
     <string name="grid_title" msgid="1688173478777254123">"Apprutenett"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Bruk"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Trykk for å endre"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Temaikoner"</string>
     <string name="beta_title" msgid="8703819523760746458">"Beta"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Endre apprutenett"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Bakgrunnsfarger"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Bakgrunnsfarge"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Grunnleggende farger"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Fargen er endret"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Dynamisk"</string>
 </resources>

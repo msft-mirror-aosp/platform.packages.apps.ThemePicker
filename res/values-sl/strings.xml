@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Zaslonsko ozadje in slog"</string>
     <string name="theme_title" msgid="2144932106319405101">"Slog"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Ura"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Ura po meri"</string>
+    <string name="clock_description" msgid="3563839327378948">"Izberite uro po meri"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Spremenite uro po meri"</string>
     <string name="grid_title" msgid="1688173478777254123">"Mreža aplikacij"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Uporabi"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Dotaknite se za urejanje"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Ikone s temo"</string>
     <string name="beta_title" msgid="8703819523760746458">"Beta"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Spreminjanje mreže aplikacij."</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Barve zaslon. ozadja"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Barva zaslonskega ozadja"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Osnovne barve"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Barva je spremenjena."</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Dinamično"</string>
 </resources>

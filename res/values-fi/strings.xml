@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Taustakuva ja tyyli"</string>
     <string name="theme_title" msgid="2144932106319405101">"Tyyli"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Kello"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Oma kello"</string>
+    <string name="clock_description" msgid="3563839327378948">"Valitse kello"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Muuta omaa kelloa"</string>
     <string name="grid_title" msgid="1688173478777254123">"Ruudukko"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Käytä"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Muokkaa napauttamalla"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Kuvakkeiden teemat"</string>
     <string name="beta_title" msgid="8703819523760746458">"Beta"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Muuta sovellusruudukkoa"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Taustakuvan värit"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Taustakuvan väri"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Perusvärit"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Väri vaihdettu"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Dynaaminen"</string>
 </resources>

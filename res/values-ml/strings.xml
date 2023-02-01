@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"വാൾപേപ്പറും സ്‌റ്റൈലും"</string>
     <string name="theme_title" msgid="2144932106319405101">"സ്‌റ്റൈൽ"</string>
-    <string name="clock_title" msgid="2126046720254613991">"ക്ലോക്ക്"</string>
+    <string name="clock_title" msgid="1974314575211361352">"കസ്റ്റം ക്ലോക്ക്"</string>
+    <string name="clock_description" msgid="3563839327378948">"കസ്റ്റം ക്ലോക്ക് തിരഞ്ഞെടുക്കൂ"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"ഇഷ്‌ടാനുസൃത  ക്ലോക്ക് മാറ്റൂ"</string>
     <string name="grid_title" msgid="1688173478777254123">"ആപ്പ് ഗ്രിഡ്"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"പ്രയോഗിക്കുക"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"എഡിറ്റ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"തീമുള്ള ഐക്കണുകൾ"</string>
     <string name="beta_title" msgid="8703819523760746458">"ബീറ്റ"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"ആപ്പ് ഗ്രിഡ് മാറ്റുക"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"വാൾപേപ്പർ നിറങ്ങൾ"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"വാൾപേപ്പറിനിന്റെ നിറം"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"അടിസ്ഥാന നിറങ്ങൾ"</string>
+    <string name="color_changed" msgid="7029571720331641235">"നിറം മാറ്റി"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"ഡൈനാമിക്"</string>
 </resources>

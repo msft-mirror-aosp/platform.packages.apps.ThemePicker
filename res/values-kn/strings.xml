@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"ವಾಲ್‌ಪೇಪರ್ ಮತ್ತು ಶೈಲಿ"</string>
     <string name="theme_title" msgid="2144932106319405101">"ಶೈಲಿ"</string>
-    <string name="clock_title" msgid="2126046720254613991">"ಗಡಿಯಾರ"</string>
+    <string name="clock_title" msgid="1974314575211361352">"ಕಸ್ಟಮ್ ಗಡಿಯಾರ"</string>
+    <string name="clock_description" msgid="3563839327378948">"ಕಸ್ಟಮ್ ವಾಚ್ ಪಿಕ್"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"ಕಸ್ಟಮ್ ಗಡಿಯಾರ ಬದಲಿಸಿ"</string>
     <string name="grid_title" msgid="1688173478777254123">"ಆ್ಯಪ್ ಗ್ರಿಡ್"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"ಅನ್ವಯಿಸಿ"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"ಎಡಿಟ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"ಥೀಮ್ ಮಾಡಿದ ಐಕಾನ್‌ಗಳು"</string>
     <string name="beta_title" msgid="8703819523760746458">"ಬೀಟಾ"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"ಆ್ಯಪ್ ಗ್ರಿಡ್ ಬದಲಾಯಿಸಿ"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"ವಾಲ್‌ಪೇಪರ್ ಬಣ್ಣಗಳು"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"ವಾಲ್‌ಪೇಪರ್ ಬಣ್ಣ"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"ಮೂಲ ಬಣ್ಣಗಳು"</string>
+    <string name="color_changed" msgid="7029571720331641235">"ಬಣ್ಣ ಬದಲಾಗಿದೆ"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"ಡೈನಾಮಿಕ್"</string>
 </resources>

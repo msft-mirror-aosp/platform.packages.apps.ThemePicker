@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"배경화면 및 스타일"</string>
     <string name="theme_title" msgid="2144932106319405101">"스타일"</string>
-    <string name="clock_title" msgid="2126046720254613991">"시계"</string>
+    <string name="clock_title" msgid="1974314575211361352">"맞춤 시계"</string>
+    <string name="clock_description" msgid="3563839327378948">"맞춤 시계 선택"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"맞춤 시계 변경"</string>
     <string name="grid_title" msgid="1688173478777254123">"앱 그리드"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"적용"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"탭하여 수정"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"테마 아이콘"</string>
     <string name="beta_title" msgid="8703819523760746458">"베타"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"앱 그리드 변경"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"배경화면 색상"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"배경화면 색상"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"기본 색상"</string>
+    <string name="color_changed" msgid="7029571720331641235">"색상 변경됨"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"동적"</string>
 </resources>

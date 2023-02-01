@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Sfondo e stile"</string>
     <string name="theme_title" msgid="2144932106319405101">"Stile"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Orologio"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Orologio personalizzato"</string>
+    <string name="clock_description" msgid="3563839327378948">"Scegli un orologio personalizzato"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Modifica un orologio personalizzato"</string>
     <string name="grid_title" msgid="1688173478777254123">"Griglia di app"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Applica"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Tocca per modificare"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Icone a tema"</string>
     <string name="beta_title" msgid="8703819523760746458">"Beta"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Cambia griglia di app"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Colori di sfondo"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Colore dello sfondo"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Colori di base"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Colore modificato"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Dinamica"</string>
 </resources>

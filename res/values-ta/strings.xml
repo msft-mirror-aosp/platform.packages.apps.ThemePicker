@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"வால்பேப்பரும் ஸ்டைலும்"</string>
     <string name="theme_title" msgid="2144932106319405101">"ஸ்டைல்"</string>
-    <string name="clock_title" msgid="2126046720254613991">"கடிகாரம்"</string>
+    <string name="clock_title" msgid="1974314575211361352">"பிரத்தியேகக் கடிகாரம்"</string>
+    <string name="clock_description" msgid="3563839327378948">"பிரத்தியேகக் கடிகாரத்தைத் தேர்வுசெய்க"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"பிரத்தியேகக் கடிகாரத்தை மாற்றும்"</string>
     <string name="grid_title" msgid="1688173478777254123">"ஆப்ஸ் கட்டம்"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"பயன்படுத்து"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"\'தீமைத்\' திருத்த தட்டவும்"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"தீம் செய்யப்பட்ட ஐகான்கள்"</string>
     <string name="beta_title" msgid="8703819523760746458">"பீட்டா"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"ஆப்ஸ் கட்டக் காட்சியை மாற்றும்"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"வால்பேப்பர் நிறங்கள்"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"வால்பேப்பரின் நிறம்"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"அடிப்படை வண்ணங்கள்"</string>
+    <string name="color_changed" msgid="7029571720331641235">"வண்ணம் மாற்றப்பட்டது"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"டைனமிக்"</string>
 </resources>

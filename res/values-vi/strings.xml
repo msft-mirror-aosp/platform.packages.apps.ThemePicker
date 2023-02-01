@@ -19,7 +19,9 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Hình nền và phong cách"</string>
     <string name="theme_title" msgid="2144932106319405101">"Kiểu"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Đồng hồ"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Đồng hồ tuỳ chỉnh"</string>
+    <string name="clock_description" msgid="3563839327378948">"Chọn đồng hồ tuỳ chỉnh"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Thay đổi đồng hồ tuỳ chỉnh"</string>
     <string name="grid_title" msgid="1688173478777254123">"Lưới ứng dụng"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Áp dụng"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Nhấn để chỉnh sửa"</string>
@@ -84,4 +86,9 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Biểu tượng theo chủ đề"</string>
     <string name="beta_title" msgid="8703819523760746458">"Thử nghiệm"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Thay đổi lưới ứng dụng"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Màu hình nền"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Màu hình nền"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Màu cơ bản"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Đã thay đổi màu"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Động"</string>
 </resources>
