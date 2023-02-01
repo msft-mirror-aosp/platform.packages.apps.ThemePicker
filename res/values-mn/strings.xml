@@ -19,7 +19,20 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name" msgid="1647136562008520313">"Дэлгэцийн зураг, загвар"</string>
     <string name="theme_title" msgid="2144932106319405101">"Загвар"</string>
-    <string name="clock_title" msgid="2126046720254613991">"Цаг"</string>
+    <string name="clock_title" msgid="1974314575211361352">"Захиалгат цаг"</string>
+    <string name="clock_description" msgid="3563839327378948">"Захиалгат цаг сонгох"</string>
+    <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"Захиалгат цагийг өөрчлөх"</string>
+    <string name="clock_settings_title" msgid="2940654205471453913">"Цагны тохиргоо"</string>
+    <!-- no translation found for clock_color (8081608867289156163) -->
+    <skip />
+    <!-- no translation found for clock_size (5028923902364418263) -->
+    <skip />
+    <!-- no translation found for clock_size_dynamic (1023930312455061642) -->
+    <skip />
+    <!-- no translation found for clock_size_dynamic_description (2776620745774561662) -->
+    <skip />
+    <!-- no translation found for clock_size_large (3143248715744138979) -->
+    <skip />
     <string name="grid_title" msgid="1688173478777254123">"Аппын хүснэгт"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"Ашиглах"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"Засахын тулд товшино уу"</string>
@@ -84,4 +97,23 @@
     <string name="themed_icon_title" msgid="7312460430471956558">"Загварын дүрс тэмдэг"</string>
     <string name="beta_title" msgid="8703819523760746458">"Бета"</string>
     <string name="gird_picker_entry_content_description" msgid="9087651470212293439">"Аппын хүснэгтийг өөрчлөх"</string>
+    <string name="wallpaper_color_tab" msgid="1447926591721403840">"Дэлгэцийн зургийн өнгө"</string>
+    <string name="wallpaper_color_title" msgid="5687965239180986458">"Дэлгэцийн зургийн өнгө"</string>
+    <string name="preset_color_tab" msgid="3133391839341329314">"Суурь өнгөнүүд"</string>
+    <string name="color_changed" msgid="7029571720331641235">"Өнгийг өөрчилсөн"</string>
+    <string name="adaptive_color_title" msgid="1336508599235896205">"Динамик"</string>
+    <string name="keyguard_slot_name_bottom_start" msgid="8747677880200629719">"Зүүн товчлол"</string>
+    <string name="keyguard_slot_name_bottom_end" msgid="2525487375680217083">"Баруун товчлол"</string>
+    <string name="keyguard_affordance_none" msgid="1751643933430782312">"Байхгүй"</string>
+    <string name="keyguard_affordance_enablement_dialog_title" msgid="3389730825561696493">"`<xliff:g id="APPNAME">%1$s</xliff:g>`-г сонгохын тулд дараахыг шалгана уу"</string>
+    <string name="keyguard_affordance_enablement_dialog_action_template" msgid="8117011931337357438">"<xliff:g id="APPNAME">%1$s</xliff:g>-г нээх"</string>
+    <string name="keyguard_affordance_enablement_dialog_message" msgid="6136286758939253570">"<xliff:g id="APPNAME">%1$s</xliff:g> аппыг товчлолоор нэмэхийн тулд дараахыг баталгаажуулна уу"</string>
+    <string name="keyguard_affordance_enablement_dialog_dismiss_button" msgid="629754625264422508">"Болсон"</string>
+    <string name="keyguard_quick_affordance_title" msgid="4242813186995735584">"Товчлол"</string>
+    <string name="keyguard_quick_affordance_section_title" msgid="2806304242671717309">"Товчлол"</string>
+    <string name="keyguard_quick_affordance_two_selected_template" msgid="1757099194522296363">"<xliff:g id="FIRST">%1$s</xliff:g>, <xliff:g id="SECOND">%2$s</xliff:g>"</string>
+    <string name="keyguard_quick_affordance_none_selected" msgid="8494127020144112003">"Байхгүй"</string>
+    <string name="notifications_section_title" msgid="4283049750376871538">"Мэдэгдэл"</string>
+    <string name="show_notifications_on_lock_screen" msgid="4157744243084646720">"Түгжигдсэн дэлгэц дээр мэдэгдлийг харуулах"</string>
+    <string name="hide_notifications_on_lock_screen" msgid="7413548956484779174">"Түгжигдсэн дэлгэц дээрх мэдэгдлүүдийг нуух"</string>
 </resources>
