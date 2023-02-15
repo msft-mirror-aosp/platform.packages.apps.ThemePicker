@@ -22,7 +22,10 @@ import com.android.customization.model.theme.ThemeBundleProvider
 import com.android.customization.model.theme.ThemeManager
 import com.android.customization.picker.clock.data.repository.ClockRegistryProvider
 import com.android.customization.picker.clock.domain.interactor.ClockPickerInteractor
+import com.android.customization.picker.clock.ui.view.ClockViewFactory
+import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.customization.picker.clock.ui.viewmodel.ClockSectionViewModel
+import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
 import com.android.customization.picker.quickaffordance.domain.interactor.KeyguardQuickAffordancePickerInteractor
@@ -37,23 +40,23 @@ interface CustomizationInjector : Injector {
         provider: ThemeBundleProvider,
         activity: FragmentActivity,
         overlayManagerCompat: OverlayManagerCompat,
-        logger: ThemesUserEventLogger
+        logger: ThemesUserEventLogger,
     ): ThemeManager
 
     fun getKeyguardQuickAffordancePickerInteractor(
-        context: Context
+        context: Context,
     ): KeyguardQuickAffordancePickerInteractor
 
     fun getClockRegistryProvider(context: Context): ClockRegistryProvider
 
     fun getClockPickerInteractor(
         context: Context,
-        clockRegistry: ClockRegistry
+        clockRegistry: ClockRegistry,
     ): ClockPickerInteractor
 
     fun getClockSectionViewModel(
         context: Context,
-        clockRegistry: ClockRegistry
+        clockRegistry: ClockRegistry,
     ): ClockSectionViewModel
 
     fun getColorPickerInteractor(
@@ -65,4 +68,19 @@ interface CustomizationInjector : Injector {
         context: Context,
         wallpaperColorsViewModel: WallpaperColorsViewModel,
     ): ColorPickerViewModel.Factory
+
+    fun getClockCarouselViewModel(
+        context: Context,
+        clockRegistry: ClockRegistry,
+    ): ClockCarouselViewModel
+
+    fun getClockViewFactory(
+        context: Context,
+        registry: ClockRegistry,
+    ): ClockViewFactory
+
+    fun getClockSettingsViewModelFactory(
+        context: Context,
+        registry: ClockRegistry,
+    ): ClockSettingsViewModel.Factory
 }

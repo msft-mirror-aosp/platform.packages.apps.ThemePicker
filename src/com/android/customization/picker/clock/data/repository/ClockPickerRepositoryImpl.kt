@@ -43,7 +43,7 @@ class ClockPickerRepositoryImpl(
         registry
             .getClocks()
             .filter { "NOT_IN_USE" !in it.clockId }
-            .map { it.toModel() }
+            .map { it.toModel(null) }
             .toTypedArray()
 
     /** The currently-selected clock. */
@@ -56,7 +56,7 @@ class ClockPickerRepositoryImpl(
                         registry
                             .getClocks()
                             .find { clockMetadata -> clockMetadata.clockId == currentClockId }
-                            ?.toModel()
+                            ?.toModel(registry.seedColor)
                     if (model == null) {
                         Log.w(
                             TAG,
@@ -66,7 +66,12 @@ class ClockPickerRepositoryImpl(
                     trySend(model)
                 }
 
-                val listener = ClockRegistry.ClockChangeListener { scope.launch { send() } }
+                val listener =
+                    object : ClockRegistry.ClockChangeListener {
+                        override fun onCurrentClockChanged() {
+                            scope.launch { send() }
+                        }
+                    }
                 registry.registerClockChangeListener(listener)
                 send()
                 awaitClose { registry.unregisterClockChangeListener(listener) }
@@ -77,6 +82,10 @@ class ClockPickerRepositoryImpl(
         registry.currentClockId = clockId
     }
 
+    override fun setClockColor(color: Int?) {
+        registry.seedColor = color
+    }
+
     // TODO(b/262924055): Use the shared system UI component to query the clock size
     private val _selectedClockSize = MutableStateFlow(ClockSize.DYNAMIC)
     override val selectedClockSize: Flow<ClockSize> = _selectedClockSize.asStateFlow()
@@ -85,8 +94,8 @@ class ClockPickerRepositoryImpl(
         _selectedClockSize.value = size
     }
 
-    private fun ClockMetadata.toModel(): ClockMetadataModel {
-        return ClockMetadataModel(clockId = clockId, name = name)
+    private fun ClockMetadata.toModel(color: Int?): ClockMetadataModel {
+        return ClockMetadataModel(clockId = clockId, name = name, color = color)
     }
 
     companion object {
