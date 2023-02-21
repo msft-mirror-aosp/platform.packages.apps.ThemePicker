@@ -174,12 +174,6 @@ public final class DefaultCustomizationSections implements CustomizationSections
                 break;
 
             case HOME_SCREEN:
-                // Dark/Light theme section.
-                sectionControllers.add(new DarkModeSectionController(
-                        activity,
-                        lifecycleOwner.getLifecycle(),
-                        mDarkModeSnapshotRestorer));
-
                 // Themed app icon section.
                 sectionControllers.add(
                         new ThemedIconSectionController(
@@ -189,8 +183,12 @@ public final class DefaultCustomizationSections implements CustomizationSections
                                 mThemedIconSnapshotRestorer));
 
                 // App grid section.
-                sectionControllers.add(new GridSectionController(
-                        GridOptionsManager.getInstance(activity), sectionNavigationController));
+                sectionControllers.add(
+                        new GridSectionController(
+                                GridOptionsManager.getInstance(activity),
+                                sectionNavigationController,
+                                lifecycleOwner,
+                                /* isRevampedUiEnabled= */ true));
                 break;
         }
 
@@ -240,8 +238,12 @@ public final class DefaultCustomizationSections implements CustomizationSections
                 mThemedIconSnapshotRestorer));
 
         // App grid section.
-        sectionControllers.add(new GridSectionController(
-                GridOptionsManager.getInstance(activity), sectionNavigationController));
+        sectionControllers.add(
+                new GridSectionController(
+                        GridOptionsManager.getInstance(activity),
+                        sectionNavigationController,
+                        lifecycleOwner,
+                        /* isRevampedUiEnabled= */ false));
 
         return sectionControllers;
     }

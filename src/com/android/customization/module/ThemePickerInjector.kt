@@ -15,6 +15,7 @@
  */
 package com.android.customization.module
 
+import android.app.Activity
 import android.app.UiModeManager
 import android.content.Context
 import android.content.Intent
@@ -24,6 +25,11 @@ import androidx.activity.ComponentActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
+import com.android.customization.model.grid.GridOptionsManager
+import com.android.customization.model.grid.data.repository.GridRepositoryImpl
+import com.android.customization.model.grid.domain.interactor.GridInteractor
+import com.android.customization.model.grid.domain.interactor.GridSnapshotRestorer
+import com.android.customization.model.grid.ui.viewmodel.GridScreenViewModel
 import com.android.customization.model.mode.DarkModeSnapshotRestorer
 import com.android.customization.model.theme.OverlayManagerCompat
 import com.android.customization.model.theme.ThemeBundleProvider
@@ -68,9 +74,11 @@ import com.android.wallpaper.picker.ImagePreviewFragment
 import com.android.wallpaper.picker.LivePreviewFragment
 import com.android.wallpaper.picker.PreviewFragment
 import com.android.wallpaper.picker.undo.domain.interactor.SnapshotRestorer
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 
+@OptIn(DelicateCoroutinesApi::class)
 open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInjector {
     private var customizationSections: CustomizationSections? = null
     private var userEventLogger: UserEventLogger? = null
@@ -98,6 +106,9 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
     private var themedIconSnapshotRestorer: ThemedIconSnapshotRestorer? = null
     private var themedIconInteractor: ThemedIconInteractor? = null
     private var clockSettingsViewModelFactory: ClockSettingsViewModel.Factory? = null
+    private var gridInteractor: GridInteractor? = null
+    private var gridSnapshotRestorer: GridSnapshotRestorer? = null
+    private var gridScreenViewModelFactory: GridScreenViewModel.Factory? = null
 
     override fun getCustomizationSections(activity: ComponentActivity): CustomizationSections {
         return customizationSections
@@ -125,7 +136,7 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
                     object : ClockViewFactoryProvider {
                         override fun get(registry: ClockRegistry): ClockViewFactory {
                             return getClockViewFactory(
-                                context = activity,
+                                activity = activity,
                                 registry = registry,
                             )
                         }
@@ -195,6 +206,7 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
             this[KEY_NOTIFICATIONS_SNAPSHOT_RESTORER] = getNotificationsSnapshotRestorer(context)
             this[KEY_DARK_MODE_SNAPSHOT_RESTORER] = getDarkModeSnapshotRestorer(context)
             this[KEY_THEMED_ICON_SNAPSHOT_RESTORER] = getThemedIconSnapshotRestorer(context)
+            this[KEY_APP_GRID_SNAPSHOT_RESTORER] = getGridSnapshotRestorer(context)
         }
     }
 
@@ -303,10 +315,11 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
         return clockPickerInteractor
             ?: ClockPickerInteractor(
                     ClockPickerRepositoryImpl(
+                        secureSettingsRepository = getSecureSettingsRepository(context),
                         registry = clockRegistry,
                         scope = GlobalScope,
                         backgroundDispatcher = Dispatchers.IO,
-                    )
+                    ),
                 )
                 .also { clockPickerInteractor = it }
     }
@@ -332,11 +345,11 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
     }
 
     override fun getClockViewFactory(
-        context: Context,
+        activity: Activity,
         registry: ClockRegistry,
     ): ClockViewFactory {
         return clockViewFactory
-            ?: ClockViewFactory(context, registry).also { clockViewFactory = it }
+            ?: ClockViewFactory(activity, registry).also { clockViewFactory = it }
     }
 
     protected fun getNotificationsInteractor(
@@ -376,7 +389,7 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
                 .also { colorPickerViewModelFactory = it }
     }
 
-    protected fun getDarkModeSnapshotRestorer(
+    fun getDarkModeSnapshotRestorer(
         context: Context,
     ): DarkModeSnapshotRestorer {
         return darkModeSnapshotRestorer
@@ -423,6 +436,44 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
                 .also { clockSettingsViewModelFactory = it }
     }
 
+    fun getGridScreenViewModelFactory(
+        context: Context,
+    ): ViewModelProvider.Factory {
+        return gridScreenViewModelFactory
+            ?: GridScreenViewModel.Factory(
+                    context = context,
+                    interactor = getGridInteractor(context),
+                )
+                .also { gridScreenViewModelFactory = it }
+    }
+
+    private fun getGridInteractor(
+        context: Context,
+    ): GridInteractor {
+        return gridInteractor
+            ?: GridInteractor(
+                    applicationScope = GlobalScope,
+                    repository =
+                        GridRepositoryImpl(
+                            applicationScope = GlobalScope,
+                            manager = GridOptionsManager.getInstance(context),
+                            backgroundDispatcher = Dispatchers.IO,
+                        ),
+                    snapshotRestorer = { getGridSnapshotRestorer(context) },
+                )
+                .also { gridInteractor = it }
+    }
+
+    private fun getGridSnapshotRestorer(
+        context: Context,
+    ): GridSnapshotRestorer {
+        return gridSnapshotRestorer
+            ?: GridSnapshotRestorer(
+                    interactor = getGridInteractor(context),
+                )
+                .also { gridSnapshotRestorer = it }
+    }
+
     companion object {
         @JvmStatic
         private val KEY_QUICK_AFFORDANCE_SNAPSHOT_RESTORER =
@@ -435,11 +486,15 @@ open class ThemePickerInjector : WallpaperPicker2Injector(), CustomizationInject
         private val KEY_DARK_MODE_SNAPSHOT_RESTORER = KEY_NOTIFICATIONS_SNAPSHOT_RESTORER + 1
         @JvmStatic
         private val KEY_THEMED_ICON_SNAPSHOT_RESTORER = KEY_DARK_MODE_SNAPSHOT_RESTORER + 1
+        @JvmStatic
+        private val KEY_APP_GRID_SNAPSHOT_RESTORER = KEY_THEMED_ICON_SNAPSHOT_RESTORER + 1
 
         /**
          * When this injector is overridden, this is the minimal value that should be used by
          * restorers returns in [getSnapshotRestorers].
+         *
+         * It should always be greater than the biggest restorer key.
          */
-        @JvmStatic protected val MIN_SNAPSHOT_RESTORER_KEY = KEY_THEMED_ICON_SNAPSHOT_RESTORER + 1
+        @JvmStatic protected val MIN_SNAPSHOT_RESTORER_KEY = KEY_APP_GRID_SNAPSHOT_RESTORER + 1
     }
 }
