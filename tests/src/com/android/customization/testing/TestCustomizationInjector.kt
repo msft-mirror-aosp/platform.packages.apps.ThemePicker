@@ -1,5 +1,6 @@
 package com.android.customization.testing
 
+import android.app.Activity
 import android.content.Context
 import androidx.fragment.app.FragmentActivity
 import com.android.customization.model.theme.OverlayManagerCompat
@@ -14,6 +15,7 @@ import com.android.customization.picker.clock.domain.interactor.ClockPickerInter
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.customization.picker.clock.ui.viewmodel.ClockSectionViewModel
+import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
 import com.android.customization.picker.color.data.repository.ColorPickerRepositoryImpl
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
@@ -46,13 +48,14 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
     private var customizationProviderClient: CustomizationProviderClient? = null
     private var keyguardQuickAffordanceSnapshotRestorer: KeyguardQuickAffordanceSnapshotRestorer? =
         null
-    private var clockRegistryProvider: ClockRegistryProvider? = null
+    private var clockRegistry: ClockRegistry? = null
     private var clockPickerInteractor: ClockPickerInteractor? = null
     private var clockSectionViewModel: ClockSectionViewModel? = null
     private var clockViewFactory: ClockViewFactory? = null
     private var colorPickerInteractor: ColorPickerInteractor? = null
     private var colorPickerViewModelFactory: ColorPickerViewModel.Factory? = null
     private var clockCarouselViewModel: ClockCarouselViewModel? = null
+    private var clockSettingsViewModelFactory: ClockSettingsViewModel.Factory? = null
 
     override fun getCustomizationPreferences(context: Context): CustomizationPreferences {
         return customizationPreferences
@@ -139,29 +142,23 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
                 .also { keyguardQuickAffordanceSnapshotRestorer = it }
     }
 
-    override fun getClockRegistryProvider(context: Context): ClockRegistryProvider {
-        return clockRegistryProvider
-            ?: ClockRegistryProvider(context, GlobalScope, Dispatchers.Main, Dispatchers.IO).also {
-                clockRegistryProvider = it
-            }
+    override fun getClockRegistry(context: Context): ClockRegistry {
+        return clockRegistry
+            ?: ClockRegistryProvider(context, GlobalScope, Dispatchers.Main, Dispatchers.IO)
+                .get()
+                .also { clockRegistry = it }
     }
 
-    override fun getClockPickerInteractor(
-        context: Context,
-        clockRegistry: ClockRegistry
-    ): ClockPickerInteractor {
+    override fun getClockPickerInteractor(context: Context): ClockPickerInteractor {
         return clockPickerInteractor
             ?: ClockPickerInteractor(FakeClockPickerRepository()).also {
                 clockPickerInteractor = it
             }
     }
 
-    override fun getClockSectionViewModel(
-        context: Context,
-        clockRegistry: ClockRegistry
-    ): ClockSectionViewModel {
+    override fun getClockSectionViewModel(context: Context): ClockSectionViewModel {
         return clockSectionViewModel
-            ?: ClockSectionViewModel(getClockPickerInteractor(context, clockRegistry)).also {
+            ?: ClockSectionViewModel(getClockPickerInteractor(context)).also {
                 clockSectionViewModel = it
             }
     }
@@ -187,19 +184,27 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
                 .also { colorPickerViewModelFactory = it }
     }
 
-    override fun getClockCarouselViewModel(
-        context: Context,
-        clockRegistry: ClockRegistry
-    ): ClockCarouselViewModel {
+    override fun getClockCarouselViewModel(context: Context): ClockCarouselViewModel {
         return clockCarouselViewModel
-            ?: ClockCarouselViewModel(getClockPickerInteractor(context, clockRegistry)).also {
+            ?: ClockCarouselViewModel(getClockPickerInteractor(context)).also {
                 clockCarouselViewModel = it
             }
     }
 
-    override fun getClockViewFactory(context: Context, registry: ClockRegistry): ClockViewFactory {
+    override fun getClockViewFactory(activity: Activity): ClockViewFactory {
         return clockViewFactory
-            ?: ClockViewFactory(context, registry).also { clockViewFactory = it }
+            ?: ClockViewFactory(activity, getClockRegistry(activity)).also { clockViewFactory = it }
+    }
+
+    override fun getClockSettingsViewModelFactory(
+        context: Context,
+    ): ClockSettingsViewModel.Factory {
+        return clockSettingsViewModelFactory
+            ?: ClockSettingsViewModel.Factory(
+                    context,
+                    getClockPickerInteractor(context),
+                )
+                .also { clockSettingsViewModelFactory = it }
     }
 
     companion object {
