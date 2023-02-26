@@ -20,8 +20,6 @@ import android.app.WallpaperColors
 import android.content.Context
 import android.util.Log
 import com.android.customization.model.CustomizationManager
-import com.android.customization.model.ResourceConstants.OVERLAY_CATEGORY_COLOR
-import com.android.customization.model.ResourceConstants.OVERLAY_CATEGORY_SYSTEM_PALETTE
 import com.android.customization.model.color.ColorBundle
 import com.android.customization.model.color.ColorCustomizationManager
 import com.android.customization.model.color.ColorOption
@@ -117,19 +115,17 @@ class ColorPickerRepositoryImpl(
 
     override fun getCurrentColorOption(): ColorOptionModel {
         val overlays = colorManager.currentOverlays
+        val styleOrNull = colorManager.currentStyle
+        val style = styleOrNull?.let { Style.valueOf(it) } ?: Style.TONAL_SPOT
+        val colorOptionBuilder =
+        // Does not matter whether ColorSeedOption or ColorBundle builder is used here
+        // because to apply the color, one just needs a generic ColorOption
+        ColorSeedOption.Builder().setSource(colorManager.currentColorSource).setStyle(style)
+        for (overlay in overlays) {
+            colorOptionBuilder.addOverlayPackage(overlay.key, overlay.value)
+        }
         return ColorOptionModel(
-            colorOption =
-                // Does not matter whether ColorSeedOption or ColorBundle builder is used here
-                // because to apply the color, one just needs a generic ColorOption
-                ColorSeedOption.Builder()
-                    .addOverlayPackage(
-                        OVERLAY_CATEGORY_SYSTEM_PALETTE,
-                        overlays[OVERLAY_CATEGORY_SYSTEM_PALETTE]
-                    )
-                    .addOverlayPackage(OVERLAY_CATEGORY_COLOR, overlays[OVERLAY_CATEGORY_COLOR])
-                    .setSource(colorManager.currentColorSource)
-                    .setStyle(Style.valueOf(colorManager.currentStyle))
-                    .build(),
+            colorOption = colorOptionBuilder.build(),
             isSelected = false,
         )
     }
