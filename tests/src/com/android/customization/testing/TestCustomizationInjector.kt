@@ -1,5 +1,6 @@
 package com.android.customization.testing
 
+import android.app.Activity
 import android.content.Context
 import androidx.fragment.app.FragmentActivity
 import com.android.customization.model.theme.OverlayManagerCompat
@@ -11,9 +12,13 @@ import com.android.customization.module.ThemesUserEventLogger
 import com.android.customization.picker.clock.data.repository.ClockRegistryProvider
 import com.android.customization.picker.clock.data.repository.FakeClockPickerRepository
 import com.android.customization.picker.clock.domain.interactor.ClockPickerInteractor
+import com.android.customization.picker.clock.ui.view.ClockViewFactory
+import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.customization.picker.clock.ui.viewmodel.ClockSectionViewModel
+import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
 import com.android.customization.picker.color.data.repository.ColorPickerRepositoryImpl
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
+import com.android.customization.picker.color.domain.interactor.ColorPickerSnapshotRestorer
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
 import com.android.customization.picker.quickaffordance.data.repository.KeyguardQuickAffordancePickerRepository
 import com.android.customization.picker.quickaffordance.domain.interactor.KeyguardQuickAffordancePickerInteractor
@@ -28,7 +33,8 @@ import com.android.wallpaper.module.PackageStatusNotifier
 import com.android.wallpaper.module.UserEventLogger
 import com.android.wallpaper.picker.undo.domain.interactor.SnapshotRestorer
 import com.android.wallpaper.testing.TestInjector
-import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 
 /** Test implementation of the dependency injector. */
 class TestCustomizationInjector : TestInjector(), CustomizationInjector {
@@ -43,11 +49,15 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
     private var customizationProviderClient: CustomizationProviderClient? = null
     private var keyguardQuickAffordanceSnapshotRestorer: KeyguardQuickAffordanceSnapshotRestorer? =
         null
-    private var clockRegistryProvider: ClockRegistryProvider? = null
+    private var clockRegistry: ClockRegistry? = null
     private var clockPickerInteractor: ClockPickerInteractor? = null
     private var clockSectionViewModel: ClockSectionViewModel? = null
+    private var clockViewFactory: ClockViewFactory? = null
     private var colorPickerInteractor: ColorPickerInteractor? = null
     private var colorPickerViewModelFactory: ColorPickerViewModel.Factory? = null
+    private var colorPickerSnapshotRestorer: ColorPickerSnapshotRestorer? = null
+    private var clockCarouselViewModel: ClockCarouselViewModel? = null
+    private var clockSettingsViewModelFactory: ClockSettingsViewModel.Factory? = null
 
     override fun getCustomizationPreferences(context: Context): CustomizationPreferences {
         return customizationPreferences
@@ -94,11 +104,14 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
     private fun createCustomizationProviderClient(
         context: Context
     ): KeyguardQuickAffordancePickerInteractor {
-        val client: CustomizationProviderClient = CustomizationProviderClientImpl(context, IO)
+        val client: CustomizationProviderClient =
+            CustomizationProviderClientImpl(context, Dispatchers.IO)
         return KeyguardQuickAffordancePickerInteractor(
-            KeyguardQuickAffordancePickerRepository(client, IO),
+            KeyguardQuickAffordancePickerRepository(client, Dispatchers.IO),
             client
-        ) { getKeyguardQuickAffordanceSnapshotRestorer(context) }
+        ) {
+            getKeyguardQuickAffordanceSnapshotRestorer(context)
+        }
     }
 
     override fun getFlags(): BaseFlags {
@@ -109,6 +122,8 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
         val restorers: MutableMap<Int, SnapshotRestorer> = HashMap()
         restorers[KEY_QUICK_AFFORDANCE_SNAPSHOT_RESTORER] =
             getKeyguardQuickAffordanceSnapshotRestorer(context)
+        restorers[KEY_COLOR_PICKER_SNAPSHOT_RESTORER] =
+            getColorPickerSnapshotRestorer(context, getWallpaperColorsViewModel())
         return restorers
     }
 
@@ -117,7 +132,7 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
         context: Context
     ): CustomizationProviderClient {
         return customizationProviderClient
-            ?: CustomizationProviderClientImpl(context, IO).also {
+            ?: CustomizationProviderClientImpl(context, Dispatchers.IO).also {
                 customizationProviderClient = it
             }
     }
@@ -133,27 +148,23 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
                 .also { keyguardQuickAffordanceSnapshotRestorer = it }
     }
 
-    override fun getClockRegistryProvider(context: Context): ClockRegistryProvider {
-        return clockRegistryProvider
-            ?: ClockRegistryProvider(context).also { clockRegistryProvider = it }
+    override fun getClockRegistry(context: Context): ClockRegistry {
+        return clockRegistry
+            ?: ClockRegistryProvider(context, GlobalScope, Dispatchers.Main, Dispatchers.IO)
+                .get()
+                .also { clockRegistry = it }
     }
 
-    override fun getClockPickerInteractor(
-        context: Context,
-        clockRegistry: ClockRegistry
-    ): ClockPickerInteractor {
+    override fun getClockPickerInteractor(context: Context): ClockPickerInteractor {
         return clockPickerInteractor
             ?: ClockPickerInteractor(FakeClockPickerRepository()).also {
                 clockPickerInteractor = it
             }
     }
 
-    override fun getClockSectionViewModel(
-        context: Context,
-        clockRegistry: ClockRegistry
-    ): ClockSectionViewModel {
+    override fun getClockSectionViewModel(context: Context): ClockSectionViewModel {
         return clockSectionViewModel
-            ?: ClockSectionViewModel(getClockPickerInteractor(context, clockRegistry)).also {
+            ?: ClockSectionViewModel(context, getClockPickerInteractor(context)).also {
                 clockSectionViewModel = it
             }
     }
@@ -163,7 +174,12 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
         wallpaperColorsViewModel: WallpaperColorsViewModel,
     ): ColorPickerInteractor {
         return colorPickerInteractor
-            ?: ColorPickerInteractor(ColorPickerRepositoryImpl(context, wallpaperColorsViewModel))
+            ?: ColorPickerInteractor(
+                    repository = ColorPickerRepositoryImpl(context, wallpaperColorsViewModel),
+                    snapshotRestorer = {
+                        getColorPickerSnapshotRestorer(context, wallpaperColorsViewModel)
+                    },
+                )
                 .also { colorPickerInteractor = it }
     }
 
@@ -179,7 +195,48 @@ class TestCustomizationInjector : TestInjector(), CustomizationInjector {
                 .also { colorPickerViewModelFactory = it }
     }
 
+    private fun getColorPickerSnapshotRestorer(
+        context: Context,
+        wallpaperColorsViewModel: WallpaperColorsViewModel
+    ): ColorPickerSnapshotRestorer {
+        return colorPickerSnapshotRestorer
+            ?: ColorPickerSnapshotRestorer(
+                    getColorPickerInteractor(context, wallpaperColorsViewModel)
+                )
+                .also { colorPickerSnapshotRestorer = it }
+    }
+
+    override fun getClockCarouselViewModel(context: Context): ClockCarouselViewModel {
+        return clockCarouselViewModel
+            ?: ClockCarouselViewModel(getClockPickerInteractor(context)).also {
+                clockCarouselViewModel = it
+            }
+    }
+
+    override fun getClockViewFactory(activity: Activity): ClockViewFactory {
+        return clockViewFactory
+            ?: ClockViewFactory(activity, getClockRegistry(activity)).also { clockViewFactory = it }
+    }
+
+    override fun getClockSettingsViewModelFactory(
+        context: Context,
+        wallpaperColorsViewModel: WallpaperColorsViewModel,
+    ): ClockSettingsViewModel.Factory {
+        return clockSettingsViewModelFactory
+            ?: ClockSettingsViewModel.Factory(
+                    context,
+                    getClockPickerInteractor(context),
+                    getColorPickerInteractor(
+                        context,
+                        wallpaperColorsViewModel,
+                    ),
+                )
+                .also { clockSettingsViewModelFactory = it }
+    }
+
     companion object {
         private const val KEY_QUICK_AFFORDANCE_SNAPSHOT_RESTORER = 1
+        private const val KEY_COLOR_PICKER_SNAPSHOT_RESTORER =
+            KEY_QUICK_AFFORDANCE_SNAPSHOT_RESTORER + 1
     }
 }

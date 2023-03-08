@@ -19,21 +19,20 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.cardview.widget.CardView
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.get
-import androidx.lifecycle.lifecycleScope
 import com.android.customization.module.ThemePickerInjector
 import com.android.customization.picker.clock.ui.binder.ClockSettingsBinder
-import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
-import com.android.customization.picker.quickaffordance.ui.binder.KeyguardQuickAffordancePreviewBinder
-import com.android.customization.picker.quickaffordance.ui.viewmodel.KeyguardQuickAffordancePickerViewModel
+import com.android.systemui.shared.clocks.shared.model.ClockPreviewConstants
 import com.android.wallpaper.R
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
-import kotlinx.coroutines.Dispatchers
+import com.android.wallpaper.picker.customization.ui.binder.ScreenPreviewBinder
+import com.android.wallpaper.picker.customization.ui.viewmodel.ScreenPreviewViewModel
+import com.android.wallpaper.util.PreviewUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ClockSettingsFragment : AppbarFragment() {
@@ -58,38 +57,74 @@ class ClockSettingsFragment : AppbarFragment() {
                 false,
             )
         setUpToolbar(view)
+
+        val context = requireContext()
+        val activity = requireActivity()
         val injector = InjectorProvider.getInjector() as ThemePickerInjector
 
-        // TODO(b/262924055): Modify to render the lockscreen properly
-        val viewModel: KeyguardQuickAffordancePickerViewModel =
+        val lockScreenView: CardView = view.requireViewById(R.id.lock_preview)
+        val colorViewModel = injector.getWallpaperColorsViewModel()
+        val displayUtils = injector.getDisplayUtils(context)
+        ScreenPreviewBinder.bind(
+                activity = activity,
+                previewView = lockScreenView,
+                viewModel =
+                    ScreenPreviewViewModel(
+                        previewUtils =
+                            PreviewUtils(
+                                context = context,
+                                authority =
+                                    resources.getString(
+                                        R.string.lock_screen_preview_provider_authority,
+                                    ),
+                            ),
+                        wallpaperInfoProvider = {
+                            suspendCancellableCoroutine { continuation ->
+                                injector
+                                    .getCurrentWallpaperInfoFactory(context)
+                                    .createCurrentWallpaperInfos(
+                                        { homeWallpaper, lockWallpaper, _ ->
+                                            continuation.resume(
+                                                homeWallpaper ?: lockWallpaper,
+                                                null,
+                                            )
+                                        },
+                                        /* forceRefresh= */ true,
+                                    )
+                            }
+                        },
+                        onWallpaperColorChanged = { colors ->
+                            colorViewModel.setLockWallpaperColors(colors)
+                        },
+                        initialExtrasProvider = {
+                            Bundle().apply {
+                                // Hide the clock from the system UI rendered preview so we can
+                                // place the carousel on top of it.
+                                putBoolean(
+                                    ClockPreviewConstants.KEY_HIDE_CLOCK,
+                                    true,
+                                )
+                            }
+                        },
+                    ),
+                lifecycleOwner = this,
+                offsetToStart = displayUtils.isOnWallpaperDisplay(activity),
+            )
+            .show()
+
+        ClockSettingsBinder.bind(
+            view,
             ViewModelProvider(
                     requireActivity(),
-                    injector.getKeyguardQuickAffordancePickerViewModelFactory(requireContext()),
+                    injector.getClockSettingsViewModelFactory(
+                        context,
+                        injector.getWallpaperColorsViewModel(),
+                    ),
                 )
-                .get()
-        KeyguardQuickAffordancePreviewBinder.bind(
-            activity = requireActivity(),
-            previewView = view.requireViewById(R.id.preview),
-            viewModel = viewModel,
-            lifecycleOwner = this,
-            offsetToStart =
-                injector.getDisplayUtils(requireActivity()).isOnWallpaperDisplay(requireActivity())
+                .get(),
+            injector.getClockViewFactory(activity),
+            this@ClockSettingsFragment,
         )
-
-        lifecycleScope.launch {
-            val clockRegistry =
-                withContext(Dispatchers.IO) {
-                    injector.getClockRegistryProvider(requireContext()).get()
-                }
-            ClockSettingsBinder.bind(
-                view,
-                ClockSettingsViewModel(
-                    requireContext(),
-                    injector.getClockPickerInteractor(requireContext(), clockRegistry)
-                ),
-                this@ClockSettingsFragment,
-            )
-        }
 
         return view
     }
