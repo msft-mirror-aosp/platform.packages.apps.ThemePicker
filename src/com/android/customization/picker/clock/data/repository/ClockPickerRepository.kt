@@ -14,48 +14,39 @@
  * limitations under the License.
  *
  */
-
 package com.android.customization.picker.clock.data.repository
 
-import android.util.Log
+import androidx.annotation.ColorInt
+import androidx.annotation.IntRange
+import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
-import com.android.systemui.plugins.ClockMetadata
-import com.android.systemui.shared.clocks.ClockRegistry
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 
 /**
  * Repository for accessing application clock settings, as well as selecting and configuring custom
  * clocks.
  */
-class ClockPickerRepository(registry: ClockRegistry) {
+interface ClockPickerRepository {
+    val allClocks: Flow<List<ClockMetadataModel>>
 
-    /** The currently-selected clock. */
-    val selectedClock: Flow<ClockMetadataModel?> = callbackFlow {
-        fun send() {
-            val model =
-                registry
-                    .getClocks()
-                    .find { clockMetadata -> clockMetadata.clockId == registry.currentClockId }
-                    ?.toModel()
-            if (model == null) {
-                Log.e(TAG, "Currently selected clock ID is not one of the available clocks.")
-            }
-            trySend(model)
-        }
+    val selectedClock: Flow<ClockMetadataModel>
 
-        val listener = ClockRegistry.ClockChangeListener { send() }
-        registry.registerClockChangeListener(listener)
-        send()
-        awaitClose { registry.unregisterClockChangeListener(listener) }
-    }
+    val selectedClockSize: Flow<ClockSize>
 
-    private fun ClockMetadata.toModel(): ClockMetadataModel {
-        return ClockMetadataModel(clockId = clockId, name = name)
-    }
+    fun setSelectedClock(clockId: String)
 
-    companion object {
-        private const val TAG = "ClockPickerRepository"
-    }
+    /**
+     * Set clock color to the settings.
+     *
+     * @param selectedColor selected color in the color option list.
+     * @param colorToneProgress color tone from 0 to 100 to apply to the selected color
+     * @param seedColor the actual clock color after blending the selected color and color tone
+     */
+    fun setClockColor(
+        selectedColorId: String?,
+        @IntRange(from = 0, to = 100) colorToneProgress: Int,
+        @ColorInt seedColor: Int?,
+    )
+
+    suspend fun setClockSize(size: ClockSize)
 }

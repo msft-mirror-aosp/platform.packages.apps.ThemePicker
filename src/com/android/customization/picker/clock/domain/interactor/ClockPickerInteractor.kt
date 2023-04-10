@@ -17,9 +17,14 @@
 
 package com.android.customization.picker.clock.domain.interactor
 
+import androidx.annotation.ColorInt
+import androidx.annotation.IntRange
 import com.android.customization.picker.clock.data.repository.ClockPickerRepository
+import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * Interactor for accessing application clock settings, as well as selecting and configuring custom
@@ -27,5 +32,34 @@ import kotlinx.coroutines.flow.Flow
  */
 class ClockPickerInteractor(private val repository: ClockPickerRepository) {
 
-    val selectedClock: Flow<ClockMetadataModel?> = repository.selectedClock
+    val allClocks: Flow<List<ClockMetadataModel>> = repository.allClocks
+
+    val selectedClockId: Flow<String> =
+        repository.selectedClock.map { clock -> clock.clockId }.distinctUntilChanged()
+
+    val selectedColorId: Flow<String?> =
+        repository.selectedClock.map { clock -> clock.selectedColorId }.distinctUntilChanged()
+
+    val colorToneProgress: Flow<Int> =
+        repository.selectedClock.map { clock -> clock.colorToneProgress }
+
+    val seedColor: Flow<Int?> = repository.selectedClock.map { clock -> clock.seedColor }
+
+    val selectedClockSize: Flow<ClockSize> = repository.selectedClockSize
+
+    fun setSelectedClock(clockId: String) {
+        repository.setSelectedClock(clockId)
+    }
+
+    fun setClockColor(
+        selectedColorId: String?,
+        @IntRange(from = 0, to = 100) colorToneProgress: Int,
+        @ColorInt seedColor: Int?,
+    ) {
+        repository.setClockColor(selectedColorId, colorToneProgress, seedColor)
+    }
+
+    suspend fun setClockSize(size: ClockSize) {
+        repository.setClockSize(size)
+    }
 }
