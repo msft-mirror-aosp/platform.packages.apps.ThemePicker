@@ -18,7 +18,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:clipChildren="false">
+
     <FrameLayout
         android:id="@+id/section_header_container"
         android:layout_width="match_parent"
@@ -31,18 +33,22 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingTop="36dp"
+        android:paddingTop="20dp"
         android:paddingBottom="40dp">
 
         <include
             android:id="@+id/lock_preview"
             layout="@layout/wallpaper_preview_card"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_gravity="center" />
 
+        <FrameLayout
+            android:id="@+id/clock_host_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
     </com.android.wallpaper.picker.DisplayAspectRatioFrameLayout>
-
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -52,11 +58,13 @@
         android:layout_marginBottom="28dp"
         android:background="@drawable/picker_fragment_background"
         android:paddingTop="22dp"
-        android:paddingBottom="62dp">
+        android:paddingBottom="36dp"
+        android:clipChildren="false">
 
         <FrameLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="22dp">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/tabs"
@@ -85,39 +93,31 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingTop="16dp">
+            android:clipChildren="false">
 
             <LinearLayout
                 android:id="@+id/color_picker_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:clipChildren="false">
 
-                <FrameLayout
+                <HorizontalScrollView
+                    android:id="@+id/color_options_scroll_view"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp">
-
-                    <androidx.recyclerview.widget.RecyclerView
+                    android:scrollbars="none">
+                    <LinearLayout
                         android:id="@+id/color_options"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
                         android:clipToPadding="false"
-                        android:paddingHorizontal="16dp" />
-
-                    <!--
-                    This is just an invisible placeholder put in place so that the parent keeps its
-                    height stable as the RecyclerView updates from 0 items to N items. Keeping it
-                    stable allows the layout logic to keep the size of the preview container stable
-                    as well, which bodes well for setting up the SurfaceView for remote rendering
-                    without changing its size after the content is loaded into the RecyclerView.
-                    -->
-                    <include
-                        layout="@layout/color_option_with_background"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginBottom="16dp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:visibility="invisible" />
-                </FrameLayout>
+                        android:orientation="horizontal"
+                        android:divider="@drawable/horizontal_divider_8dp"
+                        android:showDividers="middle"/>
+                </HorizontalScrollView>
 
                 <SeekBar
                     android:id="@+id/slider"

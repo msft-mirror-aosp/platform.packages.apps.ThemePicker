@@ -382,7 +382,7 @@ class KeyguardQuickAffordancePickerViewModelTest {
 
     /** Simulates a user selecting the affordance at the given index, if that is clickable. */
     private fun TestScope.selectAffordance(
-        affordances: () -> List<OptionItemViewModel>?,
+        affordances: () -> List<OptionItemViewModel<Icon>>?,
         index: Int,
     ) {
         val onClickedFlow = affordances()?.get(index)?.onClicked
@@ -405,7 +405,7 @@ class KeyguardQuickAffordancePickerViewModelTest {
      */
     private fun TestScope.assertPickerUiState(
         slots: Map<String, KeyguardQuickAffordanceSlotViewModel>?,
-        affordances: List<OptionItemViewModel>?,
+        affordances: List<OptionItemViewModel<Icon>>?,
         selectedSlotText: String,
         selectedAffordanceText: String,
     ) {
@@ -462,7 +462,8 @@ class KeyguardQuickAffordancePickerViewModelTest {
      *
      * @param slots The observed slot view-models, keyed by slot ID
      * @param expectedAffordanceNameBySlotId The expected name of the selected affordance for each
-     * slot ID or `null` if it's expected for there to be no affordance for that slot in the preview
+     *   slot ID or `null` if it's expected for there to be no affordance for that slot in the
+     *   preview
      */
     private fun assertPreviewUiState(
         slots: Map<String, KeyguardQuickAffordanceSlotViewModel>?,

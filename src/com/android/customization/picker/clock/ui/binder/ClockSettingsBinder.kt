@@ -15,11 +15,17 @@
  */
 package com.android.customization.picker.clock.ui.binder
 
+import android.content.res.Configuration
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.SeekBar
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -28,32 +34,35 @@ import androidx.recyclerview.widget.RecyclerView
 import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.ui.adapter.ClockSettingsTabAdapter
 import com.android.customization.picker.clock.ui.view.ClockSizeRadioButtonGroup
+import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
-import com.android.customization.picker.color.ui.adapter.ColorOptionAdapter
+import com.android.customization.picker.color.ui.binder.ColorOptionIconBinder
 import com.android.customization.picker.common.ui.view.ItemSpacing
 import com.android.wallpaper.R
+import com.android.wallpaper.picker.option.ui.binder.OptionItemBinder
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 /** Bind between the clock settings screen and its view model. */
 object ClockSettingsBinder {
+    private const val SLIDER_ENABLED_ALPHA = 1f
+    private const val SLIDER_DISABLED_ALPHA = .3f
+    private const val COLOR_PICKER_ITEM_PREFIX_ID = 1234
+
     fun bind(
         view: View,
         viewModel: ClockSettingsViewModel,
+        clockViewFactory: ClockViewFactory,
         lifecycleOwner: LifecycleOwner,
     ) {
+        val clockHostView: FrameLayout = view.requireViewById(R.id.clock_host_view)
+
         val tabView: RecyclerView = view.requireViewById(R.id.tabs)
         val tabAdapter = ClockSettingsTabAdapter()
         tabView.adapter = tabAdapter
         tabView.layoutManager = LinearLayoutManager(view.context, RecyclerView.HORIZONTAL, false)
         tabView.addItemDecoration(ItemSpacing(ItemSpacing.TAB_ITEM_SPACING_DP))
-
-        val colorOptionContainerView: RecyclerView = view.requireViewById(R.id.color_options)
-        val colorOptionAdapter = ColorOptionAdapter()
-        colorOptionContainerView.adapter = colorOptionAdapter
-        colorOptionContainerView.layoutManager =
-            LinearLayoutManager(view.context, RecyclerView.HORIZONTAL, false)
-        colorOptionContainerView.addItemDecoration(ItemSpacing(ItemSpacing.ITEM_SPACING_DP))
-
+        val colorOptionContainerListView: LinearLayout = view.requireViewById(R.id.color_options)
         val slider: SeekBar = view.requireViewById(R.id.slider)
         slider.setOnSeekBarChangeListener(
             object : SeekBar.OnSeekBarChangeListener {
@@ -63,8 +72,10 @@ object ClockSettingsBinder {
                     }
                 }
 
-                override fun onStartTrackingTouch(p0: SeekBar?) = Unit
-                override fun onStopTrackingTouch(p0: SeekBar?) = Unit
+                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    seekBar?.progress?.let { viewModel.onSliderProgressStop(it) }
+                }
             }
         )
 
@@ -80,6 +91,25 @@ object ClockSettingsBinder {
         val colorOptionContainer = view.requireViewById<View>(R.id.color_picker_container)
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.selectedClockId
+                        .mapNotNull { it }
+                        .collect { clockId ->
+                            val clockView = clockViewFactory.getView(clockId)
+                            (clockView.parent as? ViewGroup)?.removeView(clockView)
+                            clockHostView.removeAllViews()
+                            clockHostView.addView(clockView)
+                        }
+                }
+
+                launch {
+                    viewModel.seedColor.collect { seedColor ->
+                        viewModel.selectedClockId.value?.let { selectedClockId ->
+                            clockViewFactory.updateColor(selectedClockId, seedColor)
+                        }
+                    }
+                }
+
                 launch { viewModel.tabs.collect { tabAdapter.setItems(it) } }
 
                 launch {
@@ -99,7 +129,46 @@ object ClockSettingsBinder {
 
                 launch {
                     viewModel.colorOptions.collect { colorOptions ->
-                        colorOptionAdapter.setItems(colorOptions)
+                        colorOptions.forEachIndexed { index, colorOption ->
+                            colorOption.payload?.let { payload ->
+                                val item =
+                                    LayoutInflater.from(view.context)
+                                        .inflate(
+                                            R.layout.color_option_2,
+                                            colorOptionContainerListView,
+                                            false,
+                                        ) as LinearLayout
+                                val darkMode =
+                                    (view.resources.configuration.uiMode and
+                                        Configuration.UI_MODE_NIGHT_MASK ==
+                                        Configuration.UI_MODE_NIGHT_YES)
+                                ColorOptionIconBinder.bind(item, payload, darkMode)
+                                OptionItemBinder.bind(
+                                    view = item,
+                                    viewModel = colorOptions[index],
+                                    lifecycleOwner = lifecycleOwner,
+                                    foregroundTintSpec = null,
+                                )
+
+                                val id = COLOR_PICKER_ITEM_PREFIX_ID + index
+                                item.id = id
+                                colorOptionContainerListView.addView(item)
+                            }
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.selectedColorOptionPosition.collect { selectedPosition ->
+                        if (selectedPosition != -1) {
+                            val colorOptionContainerListView: LinearLayout =
+                                view.requireViewById(R.id.color_options)
+                            val selectedView =
+                                colorOptionContainerListView.requireViewById<View>(
+                                    COLOR_PICKER_ITEM_PREFIX_ID + selectedPosition
+                                )
+                            selectedView.parent.requestChildFocus(selectedView, selectedView)
+                        }
                     }
                 }
 
@@ -120,16 +189,32 @@ object ClockSettingsBinder {
 
                 launch {
                     viewModel.sliderProgress.collect { progress ->
-                        progress?.let { slider.setProgress(progress, false) }
+                        slider.setProgress(progress, true)
                     }
                 }
 
                 launch {
                     viewModel.isSliderEnabled.collect { isEnabled ->
-                        slider.isInvisible = !isEnabled
+                        slider.isEnabled = isEnabled
+                        slider.alpha =
+                            if (isEnabled) SLIDER_ENABLED_ALPHA else SLIDER_DISABLED_ALPHA
                     }
                 }
             }
         }
+
+        lifecycleOwner.lifecycle.addObserver(
+            LifecycleEventObserver { source, event ->
+                when (event) {
+                    Lifecycle.Event.ON_RESUME -> {
+                        clockViewFactory.registerTimeTicker(source)
+                    }
+                    Lifecycle.Event.ON_PAUSE -> {
+                        clockViewFactory.unregisterTimeTicker(source)
+                    }
+                    else -> {}
+                }
+            }
+        )
     }
 }

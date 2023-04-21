@@ -15,48 +15,50 @@
  */
 package com.android.customization.picker.clock.ui.viewmodel
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.android.customization.picker.clock.domain.interactor.ClockPickerInteractor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * Clock carousel view model that provides data for the carousel of clock previews. When there is
  * only one item, we should show a single clock preview instead of a carousel.
  */
-class ClockCarouselViewModel(
+class ClockCarouselViewModel
+constructor(
     private val interactor: ClockPickerInteractor,
-) {
+) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
-    val allClockIds: Flow<List<String>> =
-        interactor.allClocks.mapLatest { allClocks ->
-            // Delay to avoid the case that the full list of clocks is not initiated.
-            delay(CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
-            allClocks.map { it.clockId }
-        }
-
-    private val shouldShowCarousel = MutableStateFlow(false)
-    val isCarouselVisible: Flow<Boolean> =
-        combine(allClockIds.map { it.size > 1 }.distinctUntilChanged(), shouldShowCarousel) {
-                hasMoreThanOneClock,
-                shouldShowCarousel ->
-                hasMoreThanOneClock && shouldShowCarousel
+    val allClockIds: StateFlow<List<String>> =
+        interactor.allClocks
+            .mapLatest { allClocks ->
+                // Delay to avoid the case that the full list of clocks is not initiated.
+                delay(CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
+                allClocks.map { it.clockId }
             }
-            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val seedColor: Flow<Int?> = interactor.seedColor
+
+    val isCarouselVisible: Flow<Boolean> = allClockIds.map { it.size > 1 }.distinctUntilChanged()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedIndex: Flow<Int> =
         allClockIds
             .flatMapLatest { allClockIds ->
-                interactor.selectedClock.map { selectedClock ->
-                    val index = allClockIds.indexOf(selectedClock.clockId)
+                interactor.selectedClockId.map { selectedClockId ->
+                    val index = allClockIds.indexOf(selectedClockId)
                     if (index >= 0) {
                         index
                     } else {
@@ -67,14 +69,8 @@ class ClockCarouselViewModel(
             .mapNotNull { it }
 
     // Handle the case when there is only one clock in the carousel
-    private val shouldShowSingleClock = MutableStateFlow(false)
     val isSingleClockViewVisible: Flow<Boolean> =
-        combine(allClockIds.map { it.size == 1 }.distinctUntilChanged(), shouldShowSingleClock) {
-                hasOneClock,
-                shouldShowSingleClock ->
-                hasOneClock && shouldShowSingleClock
-            }
-            .distinctUntilChanged()
+        allClockIds.map { it.size == 1 }.distinctUntilChanged()
 
     val clockId: Flow<String> =
         allClockIds
@@ -85,9 +81,16 @@ class ClockCarouselViewModel(
         interactor.setSelectedClock(clockId)
     }
 
-    fun showClockCarousel(shouldShow: Boolean) {
-        shouldShowCarousel.value = shouldShow
-        shouldShowSingleClock.value = shouldShow
+    class Factory(
+        private val interactor: ClockPickerInteractor,
+    ) : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            @Suppress("UNCHECKED_CAST")
+            return ClockCarouselViewModel(
+                interactor = interactor,
+            )
+                as T
+        }
     }
 
     companion object {
