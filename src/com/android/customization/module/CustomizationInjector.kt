@@ -63,12 +63,15 @@ interface CustomizationInjector : Injector {
         wallpaperColorsViewModel: WallpaperColorsViewModel,
     ): ColorPickerViewModel.Factory
 
-    fun getClockCarouselViewModel(context: Context): ClockCarouselViewModel
+    fun getClockCarouselViewModelFactory(
+        interactor: ClockPickerInteractor,
+    ): ClockCarouselViewModel.Factory
 
     fun getClockViewFactory(activity: Activity): ClockViewFactory
 
     fun getClockSettingsViewModelFactory(
         context: Context,
         wallpaperColorsViewModel: WallpaperColorsViewModel,
+        clockViewFactory: ClockViewFactory,
     ): ClockSettingsViewModel.Factory
 }

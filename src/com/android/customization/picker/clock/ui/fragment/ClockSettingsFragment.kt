@@ -26,6 +26,7 @@ import com.android.customization.module.ThemePickerInjector
 import com.android.customization.picker.clock.ui.binder.ClockSettingsBinder
 import com.android.systemui.shared.clocks.shared.model.ClockPreviewConstants
 import com.android.wallpaper.R
+import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.customization.ui.binder.ScreenPreviewBinder
@@ -66,59 +67,62 @@ class ClockSettingsFragment : AppbarFragment() {
         val colorViewModel = injector.getWallpaperColorsViewModel()
         val displayUtils = injector.getDisplayUtils(context)
         ScreenPreviewBinder.bind(
-                activity = activity,
-                previewView = lockScreenView,
-                viewModel =
-                    ScreenPreviewViewModel(
-                        previewUtils =
-                            PreviewUtils(
-                                context = context,
-                                authority =
-                                    resources.getString(
-                                        R.string.lock_screen_preview_provider_authority,
-                                    ),
-                            ),
-                        wallpaperInfoProvider = {
-                            suspendCancellableCoroutine { continuation ->
-                                injector
-                                    .getCurrentWallpaperInfoFactory(context)
-                                    .createCurrentWallpaperInfos(
-                                        { homeWallpaper, lockWallpaper, _ ->
-                                            continuation.resume(
-                                                homeWallpaper ?: lockWallpaper,
-                                                null,
-                                            )
-                                        },
-                                        /* forceRefresh= */ true,
-                                    )
-                            }
-                        },
-                        onWallpaperColorChanged = { colors ->
-                            colorViewModel.setLockWallpaperColors(colors)
-                        },
-                        initialExtrasProvider = {
-                            Bundle().apply {
-                                // Hide the clock from the system UI rendered preview so we can
-                                // place the carousel on top of it.
-                                putBoolean(
-                                    ClockPreviewConstants.KEY_HIDE_CLOCK,
-                                    true,
+            activity = activity,
+            previewView = lockScreenView,
+            viewModel =
+                ScreenPreviewViewModel(
+                    previewUtils =
+                        PreviewUtils(
+                            context = context,
+                            authority =
+                                resources.getString(
+                                    R.string.lock_screen_preview_provider_authority,
+                                ),
+                        ),
+                    wallpaperInfoProvider = {
+                        suspendCancellableCoroutine { continuation ->
+                            injector
+                                .getCurrentWallpaperInfoFactory(context)
+                                .createCurrentWallpaperInfos(
+                                    { homeWallpaper, lockWallpaper, _ ->
+                                        continuation.resume(
+                                            lockWallpaper ?: homeWallpaper,
+                                            null,
+                                        )
+                                    },
+                                    /* forceRefresh= */ true,
                                 )
-                            }
-                        },
-                    ),
-                lifecycleOwner = this,
-                offsetToStart = displayUtils.isOnWallpaperDisplay(activity),
-            )
-            .show()
+                        }
+                    },
+                    onWallpaperColorChanged = { colors ->
+                        colorViewModel.setLockWallpaperColors(colors)
+                    },
+                    initialExtrasProvider = {
+                        Bundle().apply {
+                            // Hide the clock from the system UI rendered preview so we can
+                            // place the carousel on top of it.
+                            putBoolean(
+                                ClockPreviewConstants.KEY_HIDE_CLOCK,
+                                true,
+                            )
+                        }
+                    },
+                    wallpaperInteractor = injector.getWallpaperInteractor(requireContext()),
+                    screen = CustomizationSections.Screen.LOCK_SCREEN,
+                ),
+            lifecycleOwner = this,
+            offsetToStart = displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(activity),
+            onPreviewDirty = { activity.recreate() },
+        )
 
         ClockSettingsBinder.bind(
             view,
             ViewModelProvider(
-                    requireActivity(),
+                    this,
                     injector.getClockSettingsViewModelFactory(
                         context,
                         injector.getWallpaperColorsViewModel(),
+                        injector.getClockViewFactory(activity),
                     ),
                 )
                 .get(),

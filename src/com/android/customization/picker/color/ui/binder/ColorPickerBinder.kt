@@ -17,19 +17,24 @@
 
 package com.android.customization.picker.color.ui.binder
 
-import android.graphics.Rect
+import android.content.res.Configuration
+import android.os.Bundle
+import android.os.Parcelable
 import android.view.View
-import androidx.core.view.ViewCompat
+import android.widget.TextView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.android.customization.picker.color.ui.adapter.ColorOptionAdapter
 import com.android.customization.picker.color.ui.adapter.ColorTypeTabAdapter
+import com.android.customization.picker.color.ui.view.ColorOptionIconView
+import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
+import com.android.customization.picker.common.ui.view.ItemSpacing
 import com.android.wallpaper.R
+import com.android.wallpaper.picker.option.ui.adapter.OptionItemAdapter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -45,60 +50,96 @@ object ColorPickerBinder {
         view: View,
         viewModel: ColorPickerViewModel,
         lifecycleOwner: LifecycleOwner,
-    ) {
+    ): Binding {
         val colorTypeTabView: RecyclerView = view.requireViewById(R.id.color_type_tabs)
+        val colorTypeTabSubheaderView: TextView = view.requireViewById(R.id.color_type_tab_subhead)
         val colorOptionContainerView: RecyclerView = view.requireViewById(R.id.color_options)
 
         val colorTypeTabAdapter = ColorTypeTabAdapter()
         colorTypeTabView.adapter = colorTypeTabAdapter
         colorTypeTabView.layoutManager =
             LinearLayoutManager(view.context, RecyclerView.HORIZONTAL, false)
-        colorTypeTabView.addItemDecoration(ItemSpacing())
-        val colorOptionAdapter = ColorOptionAdapter()
+        colorTypeTabView.addItemDecoration(ItemSpacing(ItemSpacing.TAB_ITEM_SPACING_DP))
+        val colorOptionAdapter =
+            OptionItemAdapter(
+                layoutResourceId = R.layout.color_option_2,
+                lifecycleOwner = lifecycleOwner,
+                bindIcon = { foregroundView: View, colorIcon: ColorOptionIconViewModel ->
+                    val colorOptionIconView = foregroundView as? ColorOptionIconView
+                    val night =
+                        (view.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                            Configuration.UI_MODE_NIGHT_YES)
+                    colorOptionIconView?.let { ColorOptionIconBinder.bind(it, colorIcon, night) }
+                }
+            )
         colorOptionContainerView.adapter = colorOptionAdapter
         colorOptionContainerView.layoutManager =
             LinearLayoutManager(view.context, RecyclerView.HORIZONTAL, false)
-        colorOptionContainerView.addItemDecoration(ItemSpacing())
+        colorOptionContainerView.addItemDecoration(ItemSpacing(ItemSpacing.ITEM_SPACING_DP))
 
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.colorTypes
+                    viewModel.colorTypeTabs
                         .map { colorTypeById -> colorTypeById.values }
                         .collect { colorTypes -> colorTypeTabAdapter.setItems(colorTypes.toList()) }
                 }
 
                 launch {
+                    viewModel.colorTypeTabSubheader.collect { subhead ->
+                        colorTypeTabSubheaderView.text = subhead
+                    }
+                }
+
+                launch {
                     viewModel.colorOptions.collect { colorOptions ->
                         colorOptionAdapter.setItems(colorOptions)
+                        // the same recycler view is used for different color types tabs
+                        // the scroll state of each tab should be independent of others
+                        if (layoutManagerSavedState != null) {
+                            colorOptionContainerView.post {
+                                (colorOptionContainerView.layoutManager as LinearLayoutManager)
+                                    .onRestoreInstanceState(layoutManagerSavedState)
+                                layoutManagerSavedState = null
+                            }
+                        } else {
+                            var indexToFocus = colorOptions.indexOfFirst { it.isSelected.value }
+                            indexToFocus = if (indexToFocus < 0) 0 else indexToFocus
+                            val linearLayoutManager =
+                                object : LinearLayoutManager(view.context, HORIZONTAL, false) {
+                                    override fun onLayoutCompleted(state: RecyclerView.State?) {
+                                        super.onLayoutCompleted(state)
+                                        // scrollToPosition seems to be inconsistently moving
+                                        // selected
+                                        // color to different positions
+                                        scrollToPositionWithOffset(indexToFocus, 0)
+                                    }
+                                }
+                            colorOptionContainerView.layoutManager = linearLayoutManager
+                        }
                     }
                 }
             }
         }
-    }
+        return object : Binding {
+            override fun saveInstanceState(savedState: Bundle) {
+                savedState.putParcelable(
+                    LAYOUT_MANAGER_SAVED_STATE,
+                    colorOptionContainerView.layoutManager?.onSaveInstanceState()
+                )
+            }
 
-    // TODO (b/262924623): Remove function and use common ItemSpacing after ag/20929223 is merged
-    private class ItemSpacing : RecyclerView.ItemDecoration() {
-        override fun getItemOffsets(outRect: Rect, itemPosition: Int, parent: RecyclerView) {
-            val addSpacingToStart = itemPosition > 0
-            val addSpacingToEnd = itemPosition < (parent.adapter?.itemCount ?: 0) - 1
-            val isRtl = parent.layoutManager?.layoutDirection == ViewCompat.LAYOUT_DIRECTION_RTL
-            val density = parent.context.resources.displayMetrics.density
-            if (!isRtl) {
-                outRect.left = if (addSpacingToStart) ITEM_SPACING_DP.toPx(density) else 0
-                outRect.right = if (addSpacingToEnd) ITEM_SPACING_DP.toPx(density) else 0
-            } else {
-                outRect.left = if (addSpacingToEnd) ITEM_SPACING_DP.toPx(density) else 0
-                outRect.right = if (addSpacingToStart) ITEM_SPACING_DP.toPx(density) else 0
+            override fun restoreInstanceState(savedState: Bundle) {
+                layoutManagerSavedState = savedState.getParcelable(LAYOUT_MANAGER_SAVED_STATE)
             }
         }
-
-        private fun Int.toPx(density: Float): Int {
-            return (this * density).toInt()
-        }
-
-        companion object {
-            private const val ITEM_SPACING_DP = 8
-        }
     }
+
+    interface Binding {
+        fun saveInstanceState(savedState: Bundle)
+        fun restoreInstanceState(savedState: Bundle)
+    }
+
+    private val LAYOUT_MANAGER_SAVED_STATE: String = "layout_manager_state"
+    private var layoutManagerSavedState: Parcelable? = null
 }

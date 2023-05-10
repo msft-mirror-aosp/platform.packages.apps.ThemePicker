@@ -19,6 +19,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -29,14 +30,6 @@ import com.android.wallpaper.R
 import kotlinx.coroutines.launch
 
 object ClockCarouselViewBinder {
-    /**
-     * The binding is used by the view where there is an action executed from another view, e.g.
-     * toggling show/hide of the view that the binder is holding.
-     */
-    interface Binding {
-        fun show()
-        fun hide()
-    }
 
     @JvmStatic
     fun bind(
@@ -45,7 +38,8 @@ object ClockCarouselViewBinder {
         viewModel: ClockCarouselViewModel,
         clockViewFactory: ClockViewFactory,
         lifecycleOwner: LifecycleOwner,
-    ): Binding {
+        hideSmartspace: (Boolean) -> Unit,
+    ) {
         val singleClockHostView =
             singleClockView.requireViewById<FrameLayout>(R.id.single_clock_host_view)
         lifecycleOwner.lifecycleScope.launch {
@@ -56,9 +50,28 @@ object ClockCarouselViewBinder {
                     viewModel.allClockIds.collect { allClockIds ->
                         carouselView.setUpClockCarouselView(
                             clockIds = allClockIds,
-                            onGetClockPreview = { clockId -> clockViewFactory.getView(clockId) },
-                            onClockSelected = { clockId -> viewModel.setSelectedClock(clockId) },
+                            onGetClockController = { clockId ->
+                                clockViewFactory.getController(clockId)
+                            },
+                            onClockSelected = { clockId ->
+                                viewModel.setSelectedClock(clockId)
+                                val hasCustomWeatherDataDisplay =
+                                    clockViewFactory
+                                        .getController(clockId)
+                                        .largeClock
+                                        .config
+                                        .hasCustomWeatherDataDisplay
+
+                                hideSmartspace(hasCustomWeatherDataDisplay)
+                            },
+                            previewRatio = clockViewFactory.getRatio(),
                         )
+                    }
+                }
+
+                launch {
+                    viewModel.allClockIds.collect {
+                        it.forEach { clockId -> clockViewFactory.updateTimeFormat(clockId) }
                     }
                 }
 
@@ -89,22 +102,18 @@ object ClockCarouselViewBinder {
             }
         }
 
-        lifecycleOwner.lifecycleScope.launch {
-            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                clockViewFactory.registerTimeTicker()
+        lifecycleOwner.lifecycle.addObserver(
+            LifecycleEventObserver { source, event ->
+                when (event) {
+                    Lifecycle.Event.ON_RESUME -> {
+                        clockViewFactory.registerTimeTicker(source)
+                    }
+                    Lifecycle.Event.ON_PAUSE -> {
+                        clockViewFactory.unregisterTimeTicker(source)
+                    }
+                    else -> {}
+                }
             }
-            // When paused
-            clockViewFactory.unregisterTimeTicker()
-        }
-
-        return object : Binding {
-            override fun show() {
-                viewModel.showClockCarousel(true)
-            }
-
-            override fun hide() {
-                viewModel.showClockCarousel(false)
-            }
-        }
+        )
     }
 }

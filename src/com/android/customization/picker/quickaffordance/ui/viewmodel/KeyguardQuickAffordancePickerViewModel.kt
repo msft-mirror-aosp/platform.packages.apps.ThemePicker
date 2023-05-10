@@ -29,14 +29,16 @@ import androidx.lifecycle.viewModelScope
 import com.android.customization.picker.quickaffordance.domain.interactor.KeyguardQuickAffordancePickerInteractor
 import com.android.systemui.shared.customization.data.content.CustomizationProviderContract
 import com.android.systemui.shared.keyguard.shared.model.KeyguardQuickAffordanceSlots
-import com.android.systemui.shared.quickaffordance.shared.model.KeyguardQuickAffordancePreviewConstants
+import com.android.systemui.shared.quickaffordance.shared.model.KeyguardPreviewConstants
 import com.android.wallpaper.R
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory
+import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.picker.common.button.ui.viewmodel.ButtonStyle
 import com.android.wallpaper.picker.common.button.ui.viewmodel.ButtonViewModel
 import com.android.wallpaper.picker.common.dialog.ui.viewmodel.DialogViewModel
 import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
+import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.ui.viewmodel.ScreenPreviewViewModel
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
 import com.android.wallpaper.util.PreviewUtils
@@ -60,8 +62,9 @@ class KeyguardQuickAffordancePickerViewModel
 private constructor(
     context: Context,
     private val quickAffordanceInteractor: KeyguardQuickAffordancePickerInteractor,
+    private val wallpaperInteractor: WallpaperInteractor,
     private val wallpaperInfoFactory: CurrentWallpaperInfoFactory,
-    activityStarter: (Intent) -> Unit,
+    private val activityStarter: (Intent) -> Unit,
 ) : ViewModel() {
 
     @SuppressLint("StaticFieldLeak") private val applicationContext = context.applicationContext
@@ -79,11 +82,11 @@ private constructor(
             initialExtrasProvider = {
                 Bundle().apply {
                     putString(
-                        KeyguardQuickAffordancePreviewConstants.KEY_INITIALLY_SELECTED_SLOT_ID,
+                        KeyguardPreviewConstants.KEY_INITIALLY_SELECTED_SLOT_ID,
                         selectedSlotId.value,
                     )
                     putBoolean(
-                        KeyguardQuickAffordancePreviewConstants.KEY_HIGHLIGHT_QUICK_AFFORDANCES,
+                        KeyguardPreviewConstants.KEY_HIGHLIGHT_QUICK_AFFORDANCES,
                         true,
                     )
                 }
@@ -98,6 +101,8 @@ private constructor(
                     )
                 }
             },
+            wallpaperInteractor = wallpaperInteractor,
+            screen = CustomizationSections.Screen.LOCK_SCREEN,
         )
 
     /** A locally-selected slot, if the user ever switched from the original one. */
@@ -147,16 +152,18 @@ private constructor(
                         isSelected = isSelected,
                         selectedQuickAffordances =
                             selectedAffordances.map { affordanceModel ->
-                                OptionItemViewModel(
-                                    key = flowOf("${slot.id}::${affordanceModel.id}"),
-                                    icon =
+                                OptionItemViewModel<Icon>(
+                                    key =
+                                        MutableStateFlow("${slot.id}::${affordanceModel.id}")
+                                            as StateFlow<String>,
+                                    payload =
                                         Icon.Loaded(
                                             drawable =
                                                 getAffordanceIcon(affordanceModel.iconResourceId),
                                             contentDescription = null,
                                         ),
                                     text = Text.Loaded(affordanceModel.name),
-                                    isSelected = flowOf(true),
+                                    isSelected = MutableStateFlow(true) as StateFlow<Boolean>,
                                     onClicked = flowOf(null),
                                     onLongClicked = null,
                                     isEnabled = true,
@@ -194,9 +201,9 @@ private constructor(
             )
 
     /** The list of all available quick affordances for the selected slot. */
-    val quickAffordances: Flow<List<OptionItemViewModel>> =
+    val quickAffordances: Flow<List<OptionItemViewModel<Icon>>> =
         quickAffordanceInteractor.affordances.map { affordances ->
-            val isNoneSelected = selectedAffordanceIds.map { it.isEmpty() }
+            val isNoneSelected = selectedAffordanceIds.map { it.isEmpty() }.stateIn(viewModelScope)
             listOf(
                 none(
                     slotId = selectedSlotId,
@@ -220,11 +227,16 @@ private constructor(
             ) +
                 affordances.map { affordance ->
                     val affordanceIcon = getAffordanceIcon(affordance.iconResourceId)
-                    val isSelectedFlow: Flow<Boolean> =
-                        selectedAffordanceIds.map { it.contains(affordance.id) }
-                    OptionItemViewModel(
-                        key = selectedSlotId.map { slotId -> "$slotId::${affordance.id}" },
-                        icon = Icon.Loaded(drawable = affordanceIcon, contentDescription = null),
+                    val isSelectedFlow: StateFlow<Boolean> =
+                        selectedAffordanceIds
+                            .map { it.contains(affordance.id) }
+                            .stateIn(viewModelScope)
+                    OptionItemViewModel<Icon>(
+                        key =
+                            selectedSlotId
+                                .map { slotId -> "$slotId::${affordance.id}" }
+                                .stateIn(viewModelScope),
+                        payload = Icon.Loaded(drawable = affordanceIcon, contentDescription = null),
                         text = Text.Loaded(affordance.name),
                         isSelected = isSelectedFlow,
                         onClicked =
@@ -273,15 +285,15 @@ private constructor(
     val summary: Flow<KeyguardQuickAffordanceSummaryViewModel> =
         slots.map { slots ->
             val icon2 =
-                slots[KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_END]
-                    ?.selectedQuickAffordances
-                    ?.firstOrNull()
-                    ?.icon
+                (slots[KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_END]
+                        ?.selectedQuickAffordances
+                        ?.firstOrNull())
+                    ?.payload
             val icon1 =
-                slots[KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_START]
-                    ?.selectedQuickAffordances
-                    ?.firstOrNull()
-                    ?.icon
+                (slots[KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_START]
+                        ?.selectedQuickAffordances
+                        ?.firstOrNull())
+                    ?.payload
 
             KeyguardQuickAffordanceSummaryViewModel(
                 description = toDescriptionText(context, slots),
@@ -349,7 +361,7 @@ private constructor(
                             style = ButtonStyle.Primary,
                             onClicked = {
                                 actionComponentName.toIntent()?.let { intent ->
-                                    applicationContext.startActivity(intent)
+                                    activityStarter(intent)
                                 }
                             }
                         ),
@@ -359,14 +371,14 @@ private constructor(
 
     /** Returns a view-model for the special "None" option. */
     @SuppressLint("UseCompatLoadingForDrawables")
-    private fun none(
-        slotId: Flow<String>,
-        isSelected: Flow<Boolean>,
+    private suspend fun none(
+        slotId: StateFlow<String>,
+        isSelected: StateFlow<Boolean>,
         onSelected: Flow<(() -> Unit)?>,
-    ): OptionItemViewModel {
-        return OptionItemViewModel(
-            key = slotId.map { "$it::none" },
-            icon = Icon.Resource(res = R.drawable.link_off, contentDescription = null),
+    ): OptionItemViewModel<Icon> {
+        return OptionItemViewModel<Icon>(
+            key = slotId.map { "$it::none" }.stateIn(viewModelScope),
+            payload = Icon.Resource(res = R.drawable.link_off, contentDescription = null),
             text = Text.Resource(res = R.string.keyguard_affordance_none),
             isSelected = isSelected,
             onClicked = onSelected,
@@ -448,6 +460,7 @@ private constructor(
     class Factory(
         private val context: Context,
         private val quickAffordanceInteractor: KeyguardQuickAffordancePickerInteractor,
+        private val wallpaperInteractor: WallpaperInteractor,
         private val wallpaperInfoFactory: CurrentWallpaperInfoFactory,
         private val activityStarter: (Intent) -> Unit,
     ) : ViewModelProvider.Factory {
@@ -456,6 +469,7 @@ private constructor(
             return KeyguardQuickAffordancePickerViewModel(
                 context = context,
                 quickAffordanceInteractor = quickAffordanceInteractor,
+                wallpaperInteractor = wallpaperInteractor,
                 wallpaperInfoFactory = wallpaperInfoFactory,
                 activityStarter = activityStarter,
             )

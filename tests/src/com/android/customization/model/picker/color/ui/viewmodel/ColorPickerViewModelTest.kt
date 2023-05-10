@@ -23,9 +23,10 @@ import com.android.customization.picker.color.data.repository.FakeColorPickerRep
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
 import com.android.customization.picker.color.domain.interactor.ColorPickerSnapshotRestorer
 import com.android.customization.picker.color.shared.model.ColorType
-import com.android.customization.picker.color.ui.viewmodel.ColorOptionViewModel
+import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
-import com.android.customization.picker.color.ui.viewmodel.ColorTypeViewModel
+import com.android.customization.picker.color.ui.viewmodel.ColorTypeTabViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
 import com.android.wallpaper.testing.FakeSnapshotStore
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
@@ -60,8 +61,8 @@ class ColorPickerViewModelTest {
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         val testDispatcher = StandardTestDispatcher()
-        testScope = TestScope(testDispatcher)
         Dispatchers.setMain(testDispatcher)
+        testScope = TestScope(testDispatcher)
         repository = FakeColorPickerRepository(context = context)
         store = FakeSnapshotStore()
 
@@ -97,13 +98,13 @@ class ColorPickerViewModelTest {
                 selectedColorOptionIndex = 0
             )
 
-            colorSectionOptions()?.get(2)?.onClick?.invoke()
+            selectColorOption(colorSectionOptions, 2)
             assertColorOptionUiState(
                 colorOptions = colorSectionOptions(),
                 selectedColorOptionIndex = 2
             )
 
-            colorSectionOptions()?.get(4)?.onClick?.invoke()
+            selectColorOption(colorSectionOptions, 4)
             assertColorOptionUiState(
                 colorOptions = colorSectionOptions(),
                 selectedColorOptionIndex = 4
@@ -113,7 +114,7 @@ class ColorPickerViewModelTest {
     @Test
     fun `Select a preset color`() =
         testScope.runTest {
-            val colorTypes = collectLastValue(underTest.colorTypes)
+            val colorTypes = collectLastValue(underTest.colorTypeTabs)
             val colorOptions = collectLastValue(underTest.colorOptions)
 
             // Initially, the wallpaper color tab should be selected
@@ -125,7 +126,7 @@ class ColorPickerViewModelTest {
             )
 
             // Select "Basic colors" tab
-            colorTypes()?.get(ColorType.BASIC_COLOR)?.onClick?.invoke()
+            colorTypes()?.get(ColorType.PRESET_COLOR)?.onClick?.invoke()
             assertPickerUiState(
                 colorTypes = colorTypes(),
                 colorOptions = colorOptions(),
@@ -134,7 +135,7 @@ class ColorPickerViewModelTest {
             )
 
             // Select a color option
-            colorOptions()?.get(2)?.onClick?.invoke()
+            selectColorOption(colorOptions, 2)
 
             // Check original option is no longer selected
             colorTypes()?.get(ColorType.WALLPAPER_COLOR)?.onClick?.invoke()
@@ -146,7 +147,7 @@ class ColorPickerViewModelTest {
             )
 
             // Check new option is selected
-            colorTypes()?.get(ColorType.BASIC_COLOR)?.onClick?.invoke()
+            colorTypes()?.get(ColorType.PRESET_COLOR)?.onClick?.invoke()
             assertPickerUiState(
                 colorTypes = colorTypes(),
                 colorOptions = colorOptions(),
@@ -154,6 +155,20 @@ class ColorPickerViewModelTest {
                 selectedColorOptionIndex = 2
             )
         }
+
+    /** Simulates a user selecting the affordance at the given index, if that is clickable. */
+    private fun TestScope.selectColorOption(
+        colorOptions: () -> List<OptionItemViewModel<ColorOptionIconViewModel>>?,
+        index: Int,
+    ) {
+        val onClickedFlow = colorOptions()?.get(index)?.onClicked
+        val onClickedLastValueOrNull: (() -> (() -> Unit)?)? =
+            onClickedFlow?.let { collectLastValue(it) }
+        onClickedLastValueOrNull?.let { onClickedLastValue ->
+            val onClickedOrNull: (() -> Unit)? = onClickedLastValue()
+            onClickedOrNull?.let { onClicked -> onClicked() }
+        }
+    }
 
     /**
      * Asserts the entire picker UI state is what is expected. This includes the color type tabs and
@@ -165,9 +180,9 @@ class ColorPickerViewModelTest {
      * @param selectedColorOptionIndex The index of the color option that's expected to be selected,
      *   -1 stands for no color option should be selected
      */
-    private fun assertPickerUiState(
-        colorTypes: Map<ColorType, ColorTypeViewModel>?,
-        colorOptions: List<ColorOptionViewModel>?,
+    private fun TestScope.assertPickerUiState(
+        colorTypes: Map<ColorType, ColorTypeTabViewModel>?,
+        colorOptions: List<OptionItemViewModel<ColorOptionIconViewModel>>?,
         selectedColorTypeText: String,
         selectedColorOptionIndex: Int,
     ) {
@@ -178,7 +193,7 @@ class ColorPickerViewModelTest {
         )
         assertColorTypeTabUiState(
             colorTypes = colorTypes,
-            colorTypeId = ColorType.BASIC_COLOR,
+            colorTypeId = ColorType.PRESET_COLOR,
             isSelected = "Basic colors" == selectedColorTypeText,
         )
         assertColorOptionUiState(colorOptions, selectedColorOptionIndex)
@@ -191,8 +206,8 @@ class ColorPickerViewModelTest {
      * @param selectedColorOptionIndex The index of the color option that's expected to be selected,
      *   -1 stands for no color option should be selected
      */
-    private fun assertColorOptionUiState(
-        colorOptions: List<ColorOptionViewModel>?,
+    private fun TestScope.assertColorOptionUiState(
+        colorOptions: List<OptionItemViewModel<ColorOptionIconViewModel>>?,
         selectedColorOptionIndex: Int,
     ) {
         var foundSelectedColorOption = false
@@ -200,12 +215,13 @@ class ColorPickerViewModelTest {
         if (colorOptions != null) {
             for (i in colorOptions.indices) {
                 val colorOptionHasSelectedIndex = i == selectedColorOptionIndex
+                val isSelected: Boolean? = collectLastValue(colorOptions[i].isSelected).invoke()
                 assertWithMessage(
                         "Expected color option with index \"${i}\" to have" +
                             " isSelected=$colorOptionHasSelectedIndex but it was" +
-                            " ${colorOptions[i].isSelected}, num options: ${colorOptions.size}"
+                            " ${isSelected}, num options: ${colorOptions.size}"
                     )
-                    .that(colorOptions[i].isSelected)
+                    .that(isSelected)
                     .isEqualTo(colorOptionHasSelectedIndex)
                 foundSelectedColorOption = foundSelectedColorOption || colorOptionHasSelectedIndex
             }
@@ -235,7 +251,7 @@ class ColorPickerViewModelTest {
      * @param isSelected Whether that color type should be selected
      */
     private fun assertColorTypeTabUiState(
-        colorTypes: Map<ColorType, ColorTypeViewModel>?,
+        colorTypes: Map<ColorType, ColorTypeTabViewModel>?,
         colorTypeId: ColorType,
         isSelected: Boolean,
     ) {
