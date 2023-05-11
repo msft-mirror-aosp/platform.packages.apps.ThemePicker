@@ -30,14 +30,6 @@ import com.android.wallpaper.R
 import kotlinx.coroutines.launch
 
 object ClockCarouselViewBinder {
-    /**
-     * The binding is used by the view where there is an action executed from another view, e.g.
-     * toggling show/hide of the view that the binder is holding.
-     */
-    interface Binding {
-        fun show()
-        fun hide()
-    }
 
     @JvmStatic
     fun bind(
@@ -46,7 +38,8 @@ object ClockCarouselViewBinder {
         viewModel: ClockCarouselViewModel,
         clockViewFactory: ClockViewFactory,
         lifecycleOwner: LifecycleOwner,
-    ): Binding {
+        hideSmartspace: (Boolean) -> Unit,
+    ) {
         val singleClockHostView =
             singleClockView.requireViewById<FrameLayout>(R.id.single_clock_host_view)
         lifecycleOwner.lifecycleScope.launch {
@@ -60,9 +53,25 @@ object ClockCarouselViewBinder {
                             onGetClockController = { clockId ->
                                 clockViewFactory.getController(clockId)
                             },
-                            onClockSelected = { clockId -> viewModel.setSelectedClock(clockId) },
-                            getPreviewRatio = { clockViewFactory.getRatio() }
+                            onClockSelected = { clockId ->
+                                viewModel.setSelectedClock(clockId)
+                                val hasCustomWeatherDataDisplay =
+                                    clockViewFactory
+                                        .getController(clockId)
+                                        .largeClock
+                                        .config
+                                        .hasCustomWeatherDataDisplay
+
+                                hideSmartspace(hasCustomWeatherDataDisplay)
+                            },
+                            previewRatio = clockViewFactory.getRatio(),
                         )
+                    }
+                }
+
+                launch {
+                    viewModel.allClockIds.collect {
+                        it.forEach { clockId -> clockViewFactory.updateTimeFormat(clockId) }
                     }
                 }
 
@@ -106,15 +115,5 @@ object ClockCarouselViewBinder {
                 }
             }
         )
-
-        return object : Binding {
-            override fun show() {
-                viewModel.showClockCarousel(true)
-            }
-
-            override fun hide() {
-                viewModel.showClockCarousel(false)
-            }
-        }
     }
 }

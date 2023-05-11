@@ -17,8 +17,8 @@
 
 package com.android.customization.picker.color.ui.binder
 
+import android.content.res.Configuration
 import android.view.View
-import android.view.ViewGroup
 import android.widget.TextView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -27,12 +27,12 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.android.customization.picker.color.ui.adapter.ColorTypeTabAdapter
+import com.android.customization.picker.color.ui.view.ColorOptionIconView
 import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
 import com.android.customization.picker.common.ui.view.ItemSpacing
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.option.ui.adapter.OptionItemAdapter
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -63,8 +63,11 @@ object ColorPickerBinder {
                 layoutResourceId = R.layout.color_option_2,
                 lifecycleOwner = lifecycleOwner,
                 bindIcon = { foregroundView: View, colorIcon: ColorOptionIconViewModel ->
-                    val viewGroup = foregroundView as? ViewGroup
-                    viewGroup?.let { ColorOptionIconBinder.bind(viewGroup, colorIcon) }
+                    val colorOptionIconView = foregroundView as? ColorOptionIconView
+                    val night =
+                        (view.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                            Configuration.UI_MODE_NIGHT_YES)
+                    colorOptionIconView?.let { ColorOptionIconBinder.bind(it, colorIcon, night) }
                 }
             )
         colorOptionContainerView.adapter = colorOptionAdapter
@@ -89,6 +92,22 @@ object ColorPickerBinder {
                 launch {
                     viewModel.colorOptions.collect { colorOptions ->
                         colorOptionAdapter.setItems(colorOptions)
+                        // the same recycler view is used for different color types tabs
+                        // the scroll state of each tab should be independent of others
+                        var indexToFocus = 0
+                        colorOptions.forEachIndexed { index, colorOption ->
+                            if (colorOption.isSelected.value) {
+                                indexToFocus = index
+                            }
+                        }
+                        val linearLayoutManager =
+                            object : LinearLayoutManager(view.context, HORIZONTAL, false) {
+                                override fun onLayoutCompleted(state: RecyclerView.State?) {
+                                    super.onLayoutCompleted(state)
+                                    scrollToPosition(indexToFocus)
+                                }
+                            }
+                        colorOptionContainerView.layoutManager = linearLayoutManager
                     }
                 }
             }
