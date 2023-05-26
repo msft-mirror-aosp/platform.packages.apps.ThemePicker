@@ -15,65 +15,83 @@
  */
 package com.android.customization.picker.clock.ui.binder
 
-import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.customization.picker.clock.ui.view.ClockCarouselView
+import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.wallpaper.R
 import kotlinx.coroutines.launch
 
 object ClockCarouselViewBinder {
-    /**
-     * The binding is used by the view where there is an action executed from another view, e.g.
-     * toggling show/hide of the view that the binder is holding.
-     */
-    interface Binding {
-        fun show()
-        fun hide()
-    }
 
     @JvmStatic
     fun bind(
-        view: ClockCarouselView,
+        carouselView: ClockCarouselView,
         singleClockView: ViewGroup,
         viewModel: ClockCarouselViewModel,
-        clockViewFactory: (clockId: String) -> View,
+        clockViewFactory: ClockViewFactory,
         lifecycleOwner: LifecycleOwner,
-    ): Binding {
+        hideSmartspace: (Boolean) -> Unit,
+    ) {
         val singleClockHostView =
             singleClockView.requireViewById<FrameLayout>(R.id.single_clock_host_view)
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.isCarouselVisible.collect { view.isVisible = it } }
+                launch { viewModel.isCarouselVisible.collect { carouselView.isVisible = it } }
 
                 launch {
                     viewModel.allClockIds.collect { allClockIds ->
-                        view.setUpClockCarouselView(
+                        carouselView.setUpClockCarouselView(
                             clockIds = allClockIds,
-                            onGetClockPreview = clockViewFactory,
-                            onClockSelected = { clockId -> viewModel.setSelectedClock(clockId) },
+                            onGetClockController = { clockId ->
+                                clockViewFactory.getController(clockId)
+                            },
+                            onClockSelected = { clockId ->
+                                viewModel.setSelectedClock(clockId)
+                                val hasCustomWeatherDataDisplay =
+                                    clockViewFactory
+                                        .getController(clockId)
+                                        .largeClock
+                                        .config
+                                        .hasCustomWeatherDataDisplay
+
+                                hideSmartspace(hasCustomWeatherDataDisplay)
+                            },
                         )
                     }
                 }
 
                 launch {
-                    viewModel.selectedIndex.collect { selectedIndex ->
-                        view.setSelectedClockIndex(selectedIndex)
+                    viewModel.allClockIds.collect {
+                        it.forEach { clockId -> clockViewFactory.updateTimeFormat(clockId) }
                     }
                 }
 
-                launch { viewModel.isSingleClockViewVisible.collect { view.isVisible = it } }
+                launch {
+                    viewModel.selectedIndex.collect { selectedIndex ->
+                        carouselView.setSelectedClockIndex(selectedIndex)
+                    }
+                }
+
+                launch {
+                    viewModel.seedColor.collect { clockViewFactory.updateColorForAllClocks(it) }
+                }
+
+                launch {
+                    viewModel.isSingleClockViewVisible.collect { singleClockView.isVisible = it }
+                }
 
                 launch {
                     viewModel.clockId.collect { clockId ->
                         singleClockHostView.removeAllViews()
-                        val clockView = clockViewFactory(clockId)
+                        val clockView = clockViewFactory.getLargeView(clockId)
                         // The clock view might still be attached to an existing parent. Detach
                         // before adding to another parent.
                         (clockView.parent as? ViewGroup)?.removeView(clockView)
@@ -82,14 +100,19 @@ object ClockCarouselViewBinder {
                 }
             }
         }
-        return object : Binding {
-            override fun show() {
-                viewModel.showClockCarousel(true)
-            }
 
-            override fun hide() {
-                viewModel.showClockCarousel(false)
+        lifecycleOwner.lifecycle.addObserver(
+            LifecycleEventObserver { source, event ->
+                when (event) {
+                    Lifecycle.Event.ON_RESUME -> {
+                        clockViewFactory.registerTimeTicker(source)
+                    }
+                    Lifecycle.Event.ON_PAUSE -> {
+                        clockViewFactory.unregisterTimeTicker(source)
+                    }
+                    else -> {}
+                }
             }
-        }
+        )
     }
 }

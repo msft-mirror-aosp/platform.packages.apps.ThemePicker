@@ -21,6 +21,7 @@ import com.android.customization.picker.clock.domain.interactor.ClockPickerInter
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -42,15 +43,22 @@ class ClockCarouselViewModelTest {
     private val repositoryWithSingleClock by lazy {
         FakeClockPickerRepository(
             listOf(
-                ClockMetadataModel("clock0", "clock0", null),
+                ClockMetadataModel(
+                    "clock0",
+                    "clock0",
+                    null,
+                    ClockMetadataModel.DEFAULT_COLOR_TONE_PROGRESS,
+                    null,
+                ),
             )
         )
     }
+    private lateinit var testDispatcher: CoroutineDispatcher
     private lateinit var underTest: ClockCarouselViewModel
 
     @Before
     fun setUp() {
-        val testDispatcher = StandardTestDispatcher()
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 
@@ -61,7 +69,11 @@ class ClockCarouselViewModelTest {
 
     @Test
     fun setSelectedClock() = runTest {
-        underTest = ClockCarouselViewModel(ClockPickerInteractor(repositoryWithMultipleClocks))
+        underTest =
+            ClockCarouselViewModel(
+                ClockPickerInteractor(repositoryWithMultipleClocks),
+                testDispatcher,
+            )
         val observedSelectedIndex = collectLastValue(underTest.selectedIndex)
         advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
         underTest.setSelectedClock(FakeClockPickerRepository.fakeClocks[2].clockId)
@@ -69,46 +81,30 @@ class ClockCarouselViewModelTest {
     }
 
     @Test
-    fun setShouldShowCarousel() = runTest {
-        underTest = ClockCarouselViewModel(ClockPickerInteractor(repositoryWithMultipleClocks))
+    fun multipleClockCase() = runTest {
+        underTest =
+            ClockCarouselViewModel(
+                ClockPickerInteractor(repositoryWithMultipleClocks),
+                testDispatcher,
+            )
         val observedIsCarouselVisible = collectLastValue(underTest.isCarouselVisible)
+        val observedIsSingleClockViewVisible = collectLastValue(underTest.isSingleClockViewVisible)
         advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
-        underTest.showClockCarousel(false)
-        assertThat(observedIsCarouselVisible()).isFalse()
-        underTest.showClockCarousel(true)
         assertThat(observedIsCarouselVisible()).isTrue()
+        assertThat(observedIsSingleClockViewVisible()).isFalse()
     }
 
     @Test
-    fun shouldNotShowCarouselWhenSingleClock() = runTest {
-        underTest = ClockCarouselViewModel(ClockPickerInteractor(repositoryWithSingleClock))
+    fun singleClockCase() = runTest {
+        underTest =
+            ClockCarouselViewModel(
+                ClockPickerInteractor(repositoryWithSingleClock),
+                testDispatcher,
+            )
         val observedIsCarouselVisible = collectLastValue(underTest.isCarouselVisible)
-        advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
-        underTest.showClockCarousel(false)
-        assertThat(observedIsCarouselVisible()).isFalse()
-        underTest.showClockCarousel(true)
-        assertThat(observedIsCarouselVisible()).isFalse()
-    }
-
-    @Test
-    fun setShouldShowSingleClock() = runTest {
-        underTest = ClockCarouselViewModel(ClockPickerInteractor(repositoryWithSingleClock))
         val observedIsSingleClockViewVisible = collectLastValue(underTest.isSingleClockViewVisible)
         advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
-        underTest.showClockCarousel(false)
-        assertThat(observedIsSingleClockViewVisible()).isFalse()
-        underTest.showClockCarousel(true)
+        assertThat(observedIsCarouselVisible()).isFalse()
         assertThat(observedIsSingleClockViewVisible()).isTrue()
-    }
-
-    @Test
-    fun shouldNotShowSingleClockWhenMultipleClocks() = runTest {
-        underTest = ClockCarouselViewModel(ClockPickerInteractor(repositoryWithMultipleClocks))
-        val observedIsSingleClockViewVisible = collectLastValue(underTest.isSingleClockViewVisible)
-        advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
-        underTest.showClockCarousel(false)
-        assertThat(observedIsSingleClockViewVisible()).isFalse()
-        underTest.showClockCarousel(true)
-        assertThat(observedIsSingleClockViewVisible()).isFalse()
     }
 }

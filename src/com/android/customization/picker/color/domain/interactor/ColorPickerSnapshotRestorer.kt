@@ -28,7 +28,7 @@ class ColorPickerSnapshotRestorer(
     private val interactor: ColorPickerInteractor,
 ) : SnapshotRestorer {
 
-    private lateinit var snapshotStore: SnapshotStore
+    private var snapshotStore: SnapshotStore = SnapshotStore.NOOP
     private var originalOption: ColorOptionModel? = null
 
     fun storeSnapshot(colorOptionModel: ColorOptionModel) {
@@ -55,7 +55,8 @@ class ColorPickerSnapshotRestorer(
                     TAG,
                     """ Original packages does not match snapshot packages to restore to. The 
                         | current implementation doesn't support undo, only a reset back to the 
-                        | original color option.""".trimMargin(),
+                        | original color option."""
+                        .trimMargin(),
                 )
             }
 

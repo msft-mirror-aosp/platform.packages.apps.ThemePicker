@@ -21,6 +21,8 @@ import com.android.customization.model.color.ColorOption
 
 /** Models application state for a color option in a picker experience. */
 data class ColorOptionModel(
+    val key: String,
+
     /** Colors for the color option. */
     val colorOption: ColorOption,
 

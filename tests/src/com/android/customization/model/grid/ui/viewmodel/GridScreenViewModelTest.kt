@@ -94,13 +94,17 @@ class GridScreenViewModelTest {
             assertThat(getOnClick(optionItemsValue[1])).isNull()
         }
 
-    private fun TestScope.getSelectedIndex(optionItems: List<OptionItemViewModel>): Int {
+    private fun TestScope.getSelectedIndex(
+        optionItems: List<OptionItemViewModel<GridIconViewModel>>
+    ): Int {
         return optionItems.indexOfFirst { optionItem ->
             collectLastValue(optionItem.isSelected).invoke() == true
         }
     }
 
-    private fun TestScope.getOnClick(optionItem: OptionItemViewModel): (() -> Unit)? {
+    private fun TestScope.getOnClick(
+        optionItem: OptionItemViewModel<GridIconViewModel>
+    ): (() -> Unit)? {
         return collectLastValue(optionItem.onClicked).invoke()
     }
 }

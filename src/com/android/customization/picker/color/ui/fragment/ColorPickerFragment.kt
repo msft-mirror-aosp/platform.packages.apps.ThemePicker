@@ -27,6 +27,7 @@ import com.android.customization.model.mode.DarkModeSectionController
 import com.android.customization.module.ThemePickerInjector
 import com.android.customization.picker.color.ui.binder.ColorPickerBinder
 import com.android.wallpaper.R
+import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.customization.ui.binder.ScreenPreviewBinder
@@ -38,6 +39,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ColorPickerFragment : AppbarFragment() {
+    private var binding: ColorPickerBinder.Binding? = null
+
     companion object {
         @JvmStatic
         fun newInstance(): ColorPickerFragment {
@@ -63,19 +66,24 @@ class ColorPickerFragment : AppbarFragment() {
         val wallpaperInfoFactory = injector.getCurrentWallpaperInfoFactory(requireContext())
         val displayUtils: DisplayUtils = injector.getDisplayUtils(requireContext())
         val wcViewModel = injector.getWallpaperColorsViewModel()
-        ColorPickerBinder.bind(
-            view = view,
-            viewModel =
-                ViewModelProvider(
-                        requireActivity(),
-                        injector.getColorPickerViewModelFactory(
-                            context = requireContext(),
-                            wallpaperColorsViewModel = wcViewModel,
-                        ),
-                    )
-                    .get(),
-            lifecycleOwner = this,
-        )
+
+        binding =
+            ColorPickerBinder.bind(
+                view = view,
+                viewModel =
+                    ViewModelProvider(
+                            requireActivity(),
+                            injector.getColorPickerViewModelFactory(
+                                context = requireContext(),
+                                wallpaperColorsViewModel = wcViewModel,
+                            ),
+                        )
+                        .get(),
+                lifecycleOwner = this,
+            )
+
+        savedInstanceState?.let { binding?.restoreInstanceState(it) }
+
         ScreenPreviewBinder.bind(
             activity = requireActivity(),
             previewView = lockScreenView,
@@ -90,22 +98,26 @@ class ColorPickerFragment : AppbarFragment() {
                                         R.string.lock_screen_preview_provider_authority,
                                     ),
                         ),
-                    wallpaperInfoProvider = {
+                    wallpaperInfoProvider = { forceReload ->
                         suspendCancellableCoroutine { continuation ->
                             wallpaperInfoFactory.createCurrentWallpaperInfos(
                                 { homeWallpaper, lockWallpaper, _ ->
                                     continuation.resume(lockWallpaper ?: homeWallpaper, null)
                                 },
-                                /* forceRefresh= */ true,
+                                forceReload,
                             )
                         }
                     },
                     onWallpaperColorChanged = { colors ->
                         wcViewModel.setLockWallpaperColors(colors)
                     },
+                    wallpaperInteractor = injector.getWallpaperInteractor(requireContext()),
+                    screen = CustomizationSections.Screen.LOCK_SCREEN,
                 ),
             lifecycleOwner = this,
-            offsetToStart = displayUtils.isOnWallpaperDisplay(requireActivity()),
+            offsetToStart =
+                displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(requireActivity()),
+            onPreviewDirty = { activity?.recreate() },
         )
         ScreenPreviewBinder.bind(
             activity = requireActivity(),
@@ -121,22 +133,26 @@ class ColorPickerFragment : AppbarFragment() {
                                         R.string.grid_control_metadata_name,
                                     ),
                         ),
-                    wallpaperInfoProvider = {
+                    wallpaperInfoProvider = { forceReload ->
                         suspendCancellableCoroutine { continuation ->
                             wallpaperInfoFactory.createCurrentWallpaperInfos(
                                 { homeWallpaper, lockWallpaper, _ ->
                                     continuation.resume(homeWallpaper ?: lockWallpaper, null)
                                 },
-                                /* forceRefresh= */ true,
+                                forceReload,
                             )
                         }
                     },
                     onWallpaperColorChanged = { colors ->
                         wcViewModel.setLockWallpaperColors(colors)
                     },
+                    wallpaperInteractor = injector.getWallpaperInteractor(requireContext()),
+                    screen = CustomizationSections.Screen.HOME_SCREEN,
                 ),
             lifecycleOwner = this,
-            offsetToStart = displayUtils.isOnWallpaperDisplay(requireActivity()),
+            offsetToStart =
+                displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(requireActivity()),
+            onPreviewDirty = { activity?.recreate() },
         )
         val darkModeToggleContainerView: FrameLayout =
             view.requireViewById(R.id.dark_mode_toggle_container)
@@ -152,7 +168,16 @@ class ColorPickerFragment : AppbarFragment() {
         return view
     }
 
+    override fun onSaveInstanceState(savedInstanceState: Bundle) {
+        super.onSaveInstanceState(savedInstanceState)
+        binding?.saveInstanceState(savedInstanceState)
+    }
+
     override fun getDefaultTitle(): CharSequence {
         return requireContext().getString(R.string.color_picker_title)
+    }
+
+    override fun getToolbarColorId(): Int {
+        return android.R.color.transparent
     }
 }

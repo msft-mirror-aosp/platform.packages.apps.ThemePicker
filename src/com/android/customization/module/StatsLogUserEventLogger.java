@@ -44,7 +44,6 @@ import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
 
-import com.android.customization.model.clock.Clockface;
 import com.android.customization.model.color.ColorOption;
 import com.android.customization.model.grid.GridOption;
 import com.android.customization.model.theme.ThemeBundle;
@@ -144,7 +143,7 @@ public class StatsLogUserEventLogger extends NoOpUserEventLogger implements Them
         final boolean isLockWallpaperSet = mWallpaperStatusChecker.isLockWallpaperSet(mContext);
         final String homeCollectionId = mPreferences.getHomeWallpaperCollectionId();
         final String homeRemoteId = mPreferences.getHomeWallpaperRemoteId();
-        final String effects = mPreferences.getWallpaperEffects();
+        final String effects = mPreferences.getHomeWallpaperEffects();
         String homeWallpaperId = TextUtils.isEmpty(homeRemoteId)
                 ? mPreferences.getHomeWallpaperServiceName() : homeRemoteId;
         String lockCollectionId = isLockWallpaperSet ? mPreferences.getLockWallpaperCollectionId()
@@ -233,22 +232,6 @@ public class StatsLogUserEventLogger extends NoOpUserEventLogger implements Them
                 .setAction(action)
                 .setColorPreference(colorOption.getIndex())
                 .setColorVariant(colorOption.getStyle().ordinal() + 1)
-                .log();
-    }
-
-    @Override
-    public void logClockSelected(Clockface clock) {
-        new SysUiStatsLogger()
-                .setAction(StyleEnums.PICKER_SELECT)
-                .setClockPackageHash(Objects.hashCode(clock.getId()))
-                .log();
-    }
-
-    @Override
-    public void logClockApplied(Clockface clock) {
-        new SysUiStatsLogger()
-                .setAction(StyleEnums.PICKER_APPLIED)
-                .setClockPackageHash(Objects.hashCode(clock.getId()))
                 .log();
     }
 

@@ -18,12 +18,14 @@
 package com.android.customization.model.grid.ui.binder
 
 import android.view.View
+import android.widget.ImageView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.android.customization.model.grid.ui.viewmodel.GridIconViewModel
 import com.android.customization.model.grid.ui.viewmodel.GridScreenViewModel
 import com.android.customization.picker.common.ui.view.ItemSpacing
 import com.android.wallpaper.R
@@ -57,7 +59,11 @@ object GridScreenBinder {
                     OptionItemBinder.TintSpec(
                         selectedColor = view.context.getColor(R.color.text_color_primary),
                         unselectedColor = view.context.getColor(R.color.text_color_secondary),
-                    )
+                    ),
+                bindIcon = { foregroundView: View, gridIcon: GridIconViewModel ->
+                    val imageView = foregroundView as? ImageView
+                    imageView?.let { GridIconViewBinder.bind(imageView, gridIcon) }
+                }
             )
         optionView.adapter = adapter
 

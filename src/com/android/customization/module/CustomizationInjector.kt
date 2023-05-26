@@ -15,8 +15,8 @@
  */
 package com.android.customization.module
 
-import android.app.Activity
 import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.fragment.app.FragmentActivity
 import com.android.customization.model.theme.OverlayManagerCompat
 import com.android.customization.model.theme.ThemeBundleProvider
@@ -63,9 +63,15 @@ interface CustomizationInjector : Injector {
         wallpaperColorsViewModel: WallpaperColorsViewModel,
     ): ColorPickerViewModel.Factory
 
-    fun getClockCarouselViewModel(context: Context): ClockCarouselViewModel
+    fun getClockCarouselViewModelFactory(
+        interactor: ClockPickerInteractor,
+    ): ClockCarouselViewModel.Factory
 
-    fun getClockViewFactory(activity: Activity): ClockViewFactory
+    fun getClockViewFactory(activity: ComponentActivity): ClockViewFactory
 
-    fun getClockSettingsViewModelFactory(context: Context): ClockSettingsViewModel.Factory
+    fun getClockSettingsViewModelFactory(
+        context: Context,
+        wallpaperColorsViewModel: WallpaperColorsViewModel,
+        clockViewFactory: ClockViewFactory,
+    ): ClockSettingsViewModel.Factory
 }

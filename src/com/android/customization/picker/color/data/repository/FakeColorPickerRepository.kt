@@ -18,8 +18,9 @@ package com.android.customization.picker.color.data.repository
 
 import android.content.Context
 import android.graphics.Color
-import com.android.customization.model.color.ColorBundle
-import com.android.customization.model.color.ColorSeedOption
+import android.text.TextUtils
+import com.android.customization.model.color.ColorOptionImpl
+import com.android.customization.model.color.ColorOptionsProvider
 import com.android.customization.picker.color.shared.model.ColorOptionModel
 import com.android.customization.picker.color.shared.model.ColorType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,7 @@ class FakeColorPickerRepository(private val context: Context) : ColorPickerRepos
         MutableStateFlow(
             mapOf<ColorType, List<ColorOptionModel>>(
                 ColorType.WALLPAPER_COLOR to listOf(),
-                ColorType.BASIC_COLOR to listOf()
+                ColorType.PRESET_COLOR to listOf()
             )
         )
     override val colorOptions: StateFlow<Map<ColorType, List<ColorOptionModel>>> =
@@ -60,6 +61,7 @@ class FakeColorPickerRepository(private val context: Context) : ColorPickerRepos
                                     selectedColorOptionIndex == index
                             val colorOption =
                                 ColorOptionModel(
+                                    key = "${ColorType.WALLPAPER_COLOR}::$index",
                                     colorOption = buildWallpaperOption(index),
                                     isSelected = isSelected,
                                 )
@@ -69,18 +71,17 @@ class FakeColorPickerRepository(private val context: Context) : ColorPickerRepos
                             add(colorOption)
                         }
                     },
-                ColorType.BASIC_COLOR to
+                ColorType.PRESET_COLOR to
                     buildList {
                         repeat(times = numPresetOptions) { index ->
                             val isSelected =
-                                selectedColorOptionType == ColorType.BASIC_COLOR &&
+                                selectedColorOptionType == ColorType.PRESET_COLOR &&
                                     selectedColorOptionIndex == index
                             val colorOption =
                                 ColorOptionModel(
+                                    key = "${ColorType.PRESET_COLOR}::$index",
                                     colorOption = buildPresetOption(index),
-                                    isSelected =
-                                        selectedColorOptionType == ColorType.BASIC_COLOR &&
-                                            selectedColorOptionIndex == index,
+                                    isSelected = isSelected,
                                 )
                             if (isSelected) {
                                 selectedColorOption = colorOption
@@ -91,36 +92,36 @@ class FakeColorPickerRepository(private val context: Context) : ColorPickerRepos
             )
     }
 
-    private fun buildPresetOption(index: Int): ColorBundle {
-        return ColorBundle.Builder()
+    private fun buildPresetOption(index: Int): ColorOptionImpl {
+        val builder = ColorOptionImpl.Builder()
+        builder.lightColors =
+            intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT)
+        builder.darkColors =
+            intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT)
+        builder.index = index
+        builder.type = ColorType.PRESET_COLOR
+        builder.source = ColorOptionsProvider.COLOR_SOURCE_PRESET
+        builder.title = "Preset"
+        builder
             .addOverlayPackage("TEST_PACKAGE_TYPE", "preset_color")
             .addOverlayPackage("TEST_PACKAGE_INDEX", "$index")
-            .setIndex(index)
-            .build(context)
+        return builder.build()
     }
 
-    private fun buildWallpaperOption(index: Int): ColorSeedOption {
-        return ColorSeedOption.Builder()
-            .setLightColors(
-                intArrayOf(
-                    Color.TRANSPARENT,
-                    Color.TRANSPARENT,
-                    Color.TRANSPARENT,
-                    Color.TRANSPARENT
-                )
-            )
-            .setDarkColors(
-                intArrayOf(
-                    Color.TRANSPARENT,
-                    Color.TRANSPARENT,
-                    Color.TRANSPARENT,
-                    Color.TRANSPARENT
-                )
-            )
+    private fun buildWallpaperOption(index: Int): ColorOptionImpl {
+        val builder = ColorOptionImpl.Builder()
+        builder.lightColors =
+            intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT)
+        builder.darkColors =
+            intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT)
+        builder.index = index
+        builder.type = ColorType.WALLPAPER_COLOR
+        builder.source = ColorOptionsProvider.COLOR_SOURCE_HOME
+        builder.title = "Dynamic"
+        builder
             .addOverlayPackage("TEST_PACKAGE_TYPE", "wallpaper_color")
             .addOverlayPackage("TEST_PACKAGE_INDEX", "$index")
-            .setIndex(index)
-            .build()
+        return builder.build()
     }
 
     override suspend fun select(colorOptionModel: ColorOptionModel) {
@@ -130,17 +131,19 @@ class FakeColorPickerRepository(private val context: Context) : ColorPickerRepos
             wallpaperColorOptions.forEach { option ->
                 add(
                     ColorOptionModel(
+                        key = option.key,
                         colorOption = option.colorOption,
                         isSelected = option.testEquals(colorOptionModel),
                     )
                 )
             }
         }
-        val basicColorOptions = colorOptions[ColorType.BASIC_COLOR]!!
+        val basicColorOptions = colorOptions[ColorType.PRESET_COLOR]!!
         val newBasicColorOptions = buildList {
             basicColorOptions.forEach { option ->
                 add(
                     ColorOptionModel(
+                        key = option.key,
                         colorOption = option.colorOption,
                         isSelected = option.testEquals(colorOptionModel),
                     )
@@ -150,21 +153,25 @@ class FakeColorPickerRepository(private val context: Context) : ColorPickerRepos
         _colorOptions.value =
             mapOf(
                 ColorType.WALLPAPER_COLOR to newWallpaperColorOptions,
-                ColorType.BASIC_COLOR to newBasicColorOptions
+                ColorType.PRESET_COLOR to newBasicColorOptions
             )
     }
 
     override fun getCurrentColorOption(): ColorOptionModel = selectedColorOption
+
+    override fun getCurrentColorSource(): String? =
+        when ((selectedColorOption.colorOption as ColorOptionImpl).type) {
+            ColorType.WALLPAPER_COLOR -> ColorOptionsProvider.COLOR_SOURCE_HOME
+            ColorType.PRESET_COLOR -> ColorOptionsProvider.COLOR_SOURCE_PRESET
+            else -> null
+        }
 
     private fun ColorOptionModel.testEquals(other: Any?): Boolean {
         if (other == null) {
             return false
         }
         return if (other is ColorOptionModel) {
-            val thisColorOptionIsWallpaperColor = this.colorOption is ColorSeedOption
-            val otherColorOptionIsWallpaperColor = other.colorOption is ColorSeedOption
-            (thisColorOptionIsWallpaperColor == otherColorOptionIsWallpaperColor) &&
-                (this.colorOption.index == other.colorOption.index)
+            TextUtils.equals(this.key, other.key)
         } else {
             false
         }
