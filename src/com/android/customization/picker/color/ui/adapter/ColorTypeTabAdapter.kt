@@ -22,15 +22,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.android.customization.picker.color.ui.viewmodel.ColorTypeViewModel
+import com.android.customization.picker.color.ui.viewmodel.ColorTypeTabViewModel
 import com.android.wallpaper.R
 
 /** Adapts between color type items and views. */
 class ColorTypeTabAdapter : RecyclerView.Adapter<ColorTypeTabAdapter.ViewHolder>() {
 
-    private val items = mutableListOf<ColorTypeViewModel>()
+    private val items = mutableListOf<ColorTypeTabViewModel>()
 
-    fun setItems(items: List<ColorTypeViewModel>) {
+    fun setItems(items: List<ColorTypeTabViewModel>) {
         this.items.clear()
         this.items.addAll(items)
         notifyDataSetChanged()
@@ -55,7 +55,7 @@ class ColorTypeTabAdapter : RecyclerView.Adapter<ColorTypeTabAdapter.ViewHolder>
         val item = items[position]
         holder.itemView.isSelected = item.isSelected
         holder.textView.text = item.name
-        holder.textView.setOnClickListener(
+        holder.itemView.setOnClickListener(
             if (item.onClick != null) {
                 View.OnClickListener { item.onClick.invoke() }
             } else {

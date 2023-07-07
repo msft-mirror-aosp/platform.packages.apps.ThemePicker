@@ -18,15 +18,32 @@ package com.android.customization.picker.color.domain.interactor
 
 import com.android.customization.picker.color.data.repository.ColorPickerRepository
 import com.android.customization.picker.color.shared.model.ColorOptionModel
+import javax.inject.Provider
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Single entry-point for all application state and business logic related to system color. */
 class ColorPickerInteractor(
     private val repository: ColorPickerRepository,
+    private val snapshotRestorer: Provider<ColorPickerSnapshotRestorer>,
 ) {
+    /**
+     * The newly selected color option for overwriting the current active option during an
+     * optimistic update, the value is set to null when update fails
+     */
+    val activeColorOption = MutableStateFlow<ColorOptionModel?>(null)
+
     /** List of wallpaper and preset color options on the device, categorized by Color Type */
     val colorOptions = repository.colorOptions
 
-    fun select(colorOptionModel: ColorOptionModel) {
-        repository.select(colorOptionModel)
+    suspend fun select(colorOptionModel: ColorOptionModel) {
+        activeColorOption.value = colorOptionModel
+        try {
+            repository.select(colorOptionModel)
+            snapshotRestorer.get().storeSnapshot(colorOptionModel)
+        } catch (e: Exception) {
+            activeColorOption.value = null
+        }
     }
+
+    fun getCurrentColorOption(): ColorOptionModel = repository.getCurrentColorOption()
 }

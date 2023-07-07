@@ -27,7 +27,7 @@ class GridSnapshotRestorer(
     private val interactor: GridInteractor,
 ) : SnapshotRestorer {
 
-    private lateinit var store: SnapshotStore
+    private var store: SnapshotStore = SnapshotStore.NOOP
     private var originalOption: GridOptionItemModel? = null
 
     override suspend fun setUpSnapshotRestorer(store: SnapshotStore): RestorableSnapshot {
@@ -45,7 +45,8 @@ class GridSnapshotRestorer(
                     TAG,
                     """Original snapshot name was ${optionToRestore.name} but we're being told to
                         | restore to $optionNameFromSnapshot. The current implementation doesn't
-                        | support undo, only a reset back to the original grid option.""".trimMargin(),
+                        | support undo, only a reset back to the original grid option."""
+                        .trimMargin(),
                 )
             }
 

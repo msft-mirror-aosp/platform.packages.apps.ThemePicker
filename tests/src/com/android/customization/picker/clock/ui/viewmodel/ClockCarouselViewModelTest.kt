@@ -16,12 +16,18 @@
 package com.android.customization.picker.clock.ui.viewmodel
 
 import androidx.test.filters.SmallTest
+import com.android.customization.picker.clock.data.repository.ClockPickerRepository
 import com.android.customization.picker.clock.data.repository.FakeClockPickerRepository
 import com.android.customization.picker.clock.domain.interactor.ClockPickerInteractor
+import com.android.customization.picker.clock.domain.interactor.ClockPickerSnapshotRestorer
+import com.android.customization.picker.clock.shared.model.ClockMetadataModel
+import com.android.wallpaper.testing.FakeSnapshotStore
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -37,14 +43,28 @@ import org.junit.runners.JUnit4
 @SmallTest
 @RunWith(JUnit4::class)
 class ClockCarouselViewModelTest {
-
+    private val repositoryWithMultipleClocks by lazy { FakeClockPickerRepository() }
+    private val repositoryWithSingleClock by lazy {
+        FakeClockPickerRepository(
+            listOf(
+                ClockMetadataModel(
+                    "clock0",
+                    "clock0",
+                    null,
+                    ClockMetadataModel.DEFAULT_COLOR_TONE_PROGRESS,
+                    null,
+                ),
+            )
+        )
+    }
+    private lateinit var testDispatcher: CoroutineDispatcher
     private lateinit var underTest: ClockCarouselViewModel
+    private lateinit var interactor: ClockPickerInteractor
 
     @Before
     fun setUp() {
-        val testDispatcher = StandardTestDispatcher()
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
-        underTest = ClockCarouselViewModel(ClockPickerInteractor(FakeClockPickerRepository()))
     }
 
     @After
@@ -54,9 +74,60 @@ class ClockCarouselViewModelTest {
 
     @Test
     fun setSelectedClock() = runTest {
+        underTest =
+            ClockCarouselViewModel(
+                getClockPickerInteractor(repositoryWithMultipleClocks),
+                testDispatcher
+            )
         val observedSelectedIndex = collectLastValue(underTest.selectedIndex)
         advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
+
         underTest.setSelectedClock(FakeClockPickerRepository.fakeClocks[2].clockId)
+
         assertThat(observedSelectedIndex()).isEqualTo(2)
+    }
+
+    @Test
+    fun multipleClockCase() = runTest {
+        underTest =
+            ClockCarouselViewModel(
+                getClockPickerInteractor(repositoryWithMultipleClocks),
+                testDispatcher
+            )
+        val observedIsCarouselVisible = collectLastValue(underTest.isCarouselVisible)
+        val observedIsSingleClockViewVisible = collectLastValue(underTest.isSingleClockViewVisible)
+
+        advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
+
+        assertThat(observedIsCarouselVisible()).isTrue()
+        assertThat(observedIsSingleClockViewVisible()).isFalse()
+    }
+
+    @Test
+    fun singleClockCase() = runTest {
+        underTest =
+            ClockCarouselViewModel(
+                getClockPickerInteractor(repositoryWithSingleClock),
+                testDispatcher
+            )
+        val observedIsCarouselVisible = collectLastValue(underTest.isCarouselVisible)
+        val observedIsSingleClockViewVisible = collectLastValue(underTest.isSingleClockViewVisible)
+
+        advanceTimeBy(ClockCarouselViewModel.CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
+
+        assertThat(observedIsCarouselVisible()).isFalse()
+        assertThat(observedIsSingleClockViewVisible()).isTrue()
+    }
+
+    private fun getClockPickerInteractor(repository: ClockPickerRepository): ClockPickerInteractor {
+        return ClockPickerInteractor(
+                repository = repository,
+                snapshotRestorer = {
+                    ClockPickerSnapshotRestorer(interactor = interactor).apply {
+                        runBlocking { setUpSnapshotRestorer(store = FakeSnapshotStore()) }
+                    }
+                }
+            )
+            .also { interactor = it }
     }
 }

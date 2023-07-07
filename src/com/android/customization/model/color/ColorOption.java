@@ -107,9 +107,15 @@ public abstract class ColorOption implements CustomizationOption<ColorOption> {
         if (other == null) {
             return false;
         }
-        if (mIsDefault) {
-            return other.isDefault() || TextUtils.isEmpty(other.getSerializedPackages())
-                    || EMPTY_JSON.equals(other.getSerializedPackages());
+        if (mStyle != other.getStyle()) {
+            return false;
+        }
+        String thisSerializedPackages = getSerializedPackages();
+        if (mIsDefault || TextUtils.isEmpty(thisSerializedPackages)
+                || EMPTY_JSON.equals(thisSerializedPackages)) {
+            String otherSerializedPackages = other.getSerializedPackages();
+            return other.isDefault() || TextUtils.isEmpty(otherSerializedPackages)
+                    || EMPTY_JSON.equals(otherSerializedPackages);
         }
         // Map#equals ensures keys and values are compared.
         return mPackagesByCategory.equals(other.mPackagesByCategory);
