@@ -1,5 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright (C) 2022 The Android Open Source Project
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (C) 2023 The Android Open Source Project
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -11,11 +12,11 @@
   ~ distributed under the License is distributed on an "AS IS" BASIS,
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
-  ~
+  ~ limitations under the License
   -->
-
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_selected="true" android:color="@color/color_accent_primary" />
-    <item android:color="@android:color/transparent" />
-</selector>
+<resources>
+    <!-- Clock carousel dimens -->
+    <dimen name="clock_carousel_item_card_width">114dp</dimen>
+    <dimen name="clock_carousel_item_card_height">124dp</dimen>
+    <dimen name="clock_carousel_guideline_margin">240dp</dimen>
+</resources>
