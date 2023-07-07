@@ -5,6 +5,7 @@ import androidx.test.filters.SmallTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.customization.picker.clock.data.repository.FakeClockPickerRepository
 import com.android.customization.picker.clock.domain.interactor.ClockPickerInteractor
+import com.android.customization.picker.clock.domain.interactor.ClockPickerSnapshotRestorer
 import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
 import com.android.customization.picker.color.data.repository.FakeColorPickerRepository
@@ -15,8 +16,10 @@ import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -33,6 +36,7 @@ import org.junit.runners.JUnit4
 class ClockSettingsViewModelTest {
 
     private lateinit var context: Context
+    private lateinit var testScope: TestScope
     private lateinit var colorPickerInteractor: ColorPickerInteractor
     private lateinit var clockPickerInteractor: ClockPickerInteractor
     private lateinit var underTest: ClockSettingsViewModel
@@ -53,7 +57,16 @@ class ClockSettingsViewModelTest {
         val testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        clockPickerInteractor = ClockPickerInteractor(FakeClockPickerRepository())
+        testScope = TestScope(testDispatcher)
+        clockPickerInteractor =
+            ClockPickerInteractor(
+                repository = FakeClockPickerRepository(),
+                snapshotRestorer = {
+                    ClockPickerSnapshotRestorer(interactor = clockPickerInteractor).apply {
+                        runBlocking { setUpSnapshotRestorer(store = FakeSnapshotStore()) }
+                    }
+                },
+            )
         colorPickerInteractor =
             ColorPickerInteractor(
                 repository = FakeColorPickerRepository(context = context),
@@ -73,7 +86,9 @@ class ClockSettingsViewModelTest {
                 .create(ClockSettingsViewModel::class.java)
         colorMap = ClockColorViewModel.getPresetColorMap(context.resources)
 
-        clockPickerInteractor.setSelectedClock(FakeClockPickerRepository.CLOCK_ID_0)
+        testScope.launch {
+            clockPickerInteractor.setSelectedClock(FakeClockPickerRepository.CLOCK_ID_0)
+        }
     }
 
     @After
@@ -154,7 +169,7 @@ class ClockSettingsViewModelTest {
         underTest.onSliderProgressChanged(targetProgress1)
         assertThat(observedSliderProgress()).isEqualTo(targetProgress1)
         val targetProgress2 = 55
-        underTest.onSliderProgressStop(targetProgress2)
+        testScope.launch { underTest.onSliderProgressStop(targetProgress2) }
         assertThat(observedSliderProgress()).isEqualTo(targetProgress2)
         val expectedSelectedColorModel = colorMap.values.first() // RED
         assertThat(observedSeedColor())

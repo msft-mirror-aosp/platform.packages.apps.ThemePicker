@@ -1,5 +1,6 @@
 package com.android.customization.module;
 
+import android.app.WallpaperManager;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -23,6 +24,7 @@ import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel;
 import com.android.customization.picker.notifications.ui.section.NotificationSectionController;
 import com.android.customization.picker.notifications.ui.viewmodel.NotificationSectionViewModel;
 import com.android.customization.picker.preview.ui.section.PreviewWithClockCarouselSectionController;
+import com.android.customization.picker.preview.ui.section.PreviewWithThemeSectionController;
 import com.android.customization.picker.quickaffordance.domain.interactor.KeyguardQuickAffordancePickerInteractor;
 import com.android.customization.picker.quickaffordance.ui.section.KeyguardQuickAffordanceSectionController;
 import com.android.customization.picker.quickaffordance.ui.viewmodel.KeyguardQuickAffordancePickerViewModel;
@@ -38,7 +40,6 @@ import com.android.wallpaper.module.CurrentWallpaperInfoFactory;
 import com.android.wallpaper.module.CustomizationSections;
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor;
 import com.android.wallpaper.picker.customization.ui.section.ConnectedSectionController;
-import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewSectionController;
 import com.android.wallpaper.picker.customization.ui.section.WallpaperQuickSwitchSectionController;
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel;
 import com.android.wallpaper.util.DisplayUtils;
@@ -55,7 +56,7 @@ public final class DefaultCustomizationSections implements CustomizationSections
             mKeyguardQuickAffordancePickerViewModelFactory;
     private final NotificationSectionViewModel.Factory mNotificationSectionViewModelFactory;
     private final BaseFlags mFlags;
-    private final ClockCarouselViewModel mClockCarouselViewModel;
+    private final ClockCarouselViewModel.Factory mClockCarouselViewModelFactory;
     private final ClockViewFactory mClockViewFactory;
     private final DarkModeSnapshotRestorer mDarkModeSnapshotRestorer;
     private final ThemedIconSnapshotRestorer mThemedIconSnapshotRestorer;
@@ -68,7 +69,7 @@ public final class DefaultCustomizationSections implements CustomizationSections
                     keyguardQuickAffordancePickerViewModelFactory,
             NotificationSectionViewModel.Factory notificationSectionViewModelFactory,
             BaseFlags flags,
-            ClockCarouselViewModel clockCarouselViewModel,
+            ClockCarouselViewModel.Factory clockCarouselViewModelFactory,
             ClockViewFactory clockViewFactory,
             DarkModeSnapshotRestorer darkModeSnapshotRestorer,
             ThemedIconSnapshotRestorer themedIconSnapshotRestorer,
@@ -79,7 +80,7 @@ public final class DefaultCustomizationSections implements CustomizationSections
                 keyguardQuickAffordancePickerViewModelFactory;
         mNotificationSectionViewModelFactory = notificationSectionViewModelFactory;
         mFlags = flags;
-        mClockCarouselViewModel = clockCarouselViewModel;
+        mClockCarouselViewModelFactory = clockCarouselViewModelFactory;
         mClockViewFactory = clockViewFactory;
         mDarkModeSnapshotRestorer = darkModeSnapshotRestorer;
         mThemedIconSnapshotRestorer = themedIconSnapshotRestorer;
@@ -99,7 +100,9 @@ public final class DefaultCustomizationSections implements CustomizationSections
             CurrentWallpaperInfoFactory wallpaperInfoFactory,
             DisplayUtils displayUtils,
             CustomizationPickerViewModel customizationPickerViewModel,
-            WallpaperInteractor wallpaperInteractor) {
+            WallpaperInteractor wallpaperInteractor,
+            WallpaperManager wallpaperManager,
+            boolean isTwoPaneAndSmallWidth) {
         List<CustomizationSectionController<?>> sectionControllers = new ArrayList<>();
 
         // Wallpaper section.
@@ -112,12 +115,15 @@ public final class DefaultCustomizationSections implements CustomizationSections
                         wallpaperInfoFactory,
                         wallpaperColorsViewModel,
                         displayUtils,
-                        mClockCarouselViewModel,
+                        mClockCarouselViewModelFactory,
                         mClockViewFactory,
                         wallpaperPreviewNavigator,
                         sectionNavigationController,
-                        wallpaperInteractor)
-                        : new ScreenPreviewSectionController(
+                        wallpaperInteractor,
+                        mThemedIconInteractor,
+                        wallpaperManager,
+                        isTwoPaneAndSmallWidth)
+                        : new PreviewWithThemeSectionController(
                                 activity,
                                 lifecycleOwner,
                                 screen,
@@ -125,7 +131,10 @@ public final class DefaultCustomizationSections implements CustomizationSections
                                 wallpaperColorsViewModel,
                                 displayUtils,
                                 wallpaperPreviewNavigator,
-                                wallpaperInteractor));
+                                wallpaperInteractor,
+                                mThemedIconInteractor,
+                                wallpaperManager,
+                                isTwoPaneAndSmallWidth));
 
         sectionControllers.add(
                 new ConnectedSectionController(
@@ -139,11 +148,11 @@ public final class DefaultCustomizationSections implements CustomizationSections
                                 lifecycleOwner),
                         // Wallpaper quick switch section.
                         new WallpaperQuickSwitchSectionController(
-                                screen,
                                 customizationPickerViewModel.getWallpaperQuickSwitchViewModel(
                                         screen),
                                 lifecycleOwner,
-                                sectionNavigationController),
+                                sectionNavigationController,
+                                savedInstanceState == null),
                         /* reverseOrderWhenHorizontal= */ true));
 
         switch (screen) {

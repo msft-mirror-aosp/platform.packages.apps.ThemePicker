@@ -15,6 +15,7 @@
  */
 package com.android.customization.picker.clock.ui.binder
 
+import android.content.Context
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.view.isVisible
@@ -27,19 +28,39 @@ import com.android.customization.picker.clock.ui.view.ClockCarouselView
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.wallpaper.R
+import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewClickView
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 object ClockCarouselViewBinder {
 
     @JvmStatic
     fun bind(
+        context: Context,
         carouselView: ClockCarouselView,
         singleClockView: ViewGroup,
+        screenPreviewClickView: ScreenPreviewClickView,
         viewModel: ClockCarouselViewModel,
         clockViewFactory: ClockViewFactory,
         lifecycleOwner: LifecycleOwner,
-        hideSmartspace: (Boolean) -> Unit,
+        isTwoPaneAndSmallWidth: Boolean,
     ) {
+        carouselView.setClockViewFactory(clockViewFactory)
+        clockViewFactory.updateRegionDarkness()
+        val carouselAccessibilityDelegate =
+            CarouselAccessibilityDelegate(
+                context,
+                scrollForwardCallback = {
+                    // Callback code for scrolling forward
+                    carouselView.transitionToNext()
+                },
+                scrollBackwardCallback = {
+                    // Callback code for scrolling backward
+                    carouselView.transitionToPrevious()
+                }
+            )
+        screenPreviewClickView.accessibilityDelegate = carouselAccessibilityDelegate
+
         val singleClockHostView =
             singleClockView.requireViewById<FrameLayout>(R.id.single_clock_host_view)
         lifecycleOwner.lifecycleScope.launch {
@@ -47,38 +68,29 @@ object ClockCarouselViewBinder {
                 launch { viewModel.isCarouselVisible.collect { carouselView.isVisible = it } }
 
                 launch {
-                    viewModel.allClockIds.collect { allClockIds ->
+                    combine(viewModel.selectedClockSize, viewModel.allClocks, ::Pair).collect {
+                        (size, allClocks) ->
                         carouselView.setUpClockCarouselView(
-                            clockIds = allClockIds,
-                            onGetClockController = { clockId ->
-                                clockViewFactory.getController(clockId)
+                            clockSize = size,
+                            clocks = allClocks,
+                            onClockSelected = { clock ->
+                                viewModel.setSelectedClock(clock.clockId)
                             },
-                            onClockSelected = { clockId -> viewModel.setSelectedClock(clockId) },
-                            getPreviewRatio = { clockViewFactory.getRatio() },
-                            onClockTransitionCompleted = { startId, endId ->
-                                if (startId != endId ) {
-                                    val hasCustomWeatherDataDisplay =
-                                            clockViewFactory
-                                                    .getController(endId)
-                                                    .largeClock
-                                                    .config
-                                                    .hasCustomWeatherDataDisplay
-
-                                    hideSmartspace(hasCustomWeatherDataDisplay)
-                                }
-                            },
+                            isTwoPaneAndSmallWidth = isTwoPaneAndSmallWidth,
                         )
                     }
                 }
 
                 launch {
-                    viewModel.allClockIds.collect {
-                        it.forEach { clockId -> clockViewFactory.updateTimeFormat(clockId) }
+                    viewModel.allClocks.collect {
+                        it.forEach { clock -> clockViewFactory.updateTimeFormat(clock.clockId) }
                     }
                 }
 
                 launch {
                     viewModel.selectedIndex.collect { selectedIndex ->
+                        carouselAccessibilityDelegate.contentDescriptionOfSelectedClock =
+                            carouselView.getContentDescription(selectedIndex)
                         carouselView.setSelectedClockIndex(selectedIndex)
                     }
                 }
@@ -94,7 +106,7 @@ object ClockCarouselViewBinder {
                 launch {
                     viewModel.clockId.collect { clockId ->
                         singleClockHostView.removeAllViews()
-                        val clockView = clockViewFactory.getView(clockId)
+                        val clockView = clockViewFactory.getLargeView(clockId)
                         // The clock view might still be attached to an existing parent. Detach
                         // before adding to another parent.
                         (clockView.parent as? ViewGroup)?.removeView(clockView)
@@ -108,9 +120,7 @@ object ClockCarouselViewBinder {
             LifecycleEventObserver { source, event ->
                 when (event) {
                     Lifecycle.Event.ON_RESUME -> {
-                        clockViewFactory.registerTimeTicker(source) {
-                            !carouselView.isCarouselInTransition
-                        }
+                        clockViewFactory.registerTimeTicker(source)
                     }
                     Lifecycle.Event.ON_PAUSE -> {
                         clockViewFactory.unregisterTimeTicker(source)
