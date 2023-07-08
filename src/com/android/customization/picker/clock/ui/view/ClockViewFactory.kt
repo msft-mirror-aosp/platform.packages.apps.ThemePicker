@@ -15,14 +15,16 @@
  */
 package com.android.customization.picker.clock.ui.view
 
+import android.app.WallpaperColors
+import android.app.WallpaperManager
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.Point
 import android.graphics.Rect
-import android.util.TypedValue
 import android.view.View
 import android.widget.FrameLayout
 import androidx.annotation.ColorInt
+import androidx.core.text.util.LocalePreferences
 import androidx.lifecycle.LifecycleOwner
 import com.android.systemui.plugins.ClockController
 import com.android.systemui.plugins.WeatherData
@@ -39,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap
 class ClockViewFactory(
     private val appContext: Context,
     val screenSize: Point,
+    private val wallpaperManager: WallpaperManager,
     private val registry: ClockRegistry,
 ) {
     private val resources = appContext.resources
@@ -51,16 +54,31 @@ class ClockViewFactory(
             ?: initClockController(clockId).also { clockControllers[clockId] = it }
     }
 
+    /**
+     * Reset the large view to its initial state when getting the view. This is because some view
+     * configs, e.g. animation state, might change during the reuse of the clock view in the app.
+     */
     fun getLargeView(clockId: String): View {
-        return getController(clockId).largeClock.view
+        return getController(clockId).largeClock.let {
+            it.animations.onPickerCarouselSwiping(1F)
+            it.view
+        }
     }
 
+    /**
+     * Reset the small view to its initial state when getting the view. This is because some view
+     * configs, e.g. translation X, might change during the reuse of the clock view in the app.
+     */
     fun getSmallView(clockId: String): View {
-        return smallClockFrames[clockId]
-            ?: createSmallClockFrame().also {
-                it.addView(getController(clockId).smallClock.view)
-                smallClockFrames[clockId] = it
-            }
+        val smallClockFrame =
+            smallClockFrames[clockId]
+                ?: createSmallClockFrame().also {
+                    it.addView(getController(clockId).smallClock.view)
+                    smallClockFrames[clockId] = it
+                }
+        smallClockFrame.translationX = 0F
+        smallClockFrame.translationY = 0F
+        return smallClockFrame
     }
 
     private fun createSmallClockFrame(): FrameLayout {
@@ -70,29 +88,39 @@ class ClockViewFactory(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 resources.getDimensionPixelSize(R.dimen.small_clock_height)
             )
-        layoutParams.topMargin =
-            getStatusBarHeight(resources) +
-                resources.getDimensionPixelSize(R.dimen.small_clock_padding_top)
+        layoutParams.topMargin = getSmallClockTopMargin()
+        layoutParams.marginStart = getSmallClockStartPadding()
         smallClockFrame.layoutParams = layoutParams
-
-        smallClockFrame.setPaddingRelative(
-            resources.getDimensionPixelSize(R.dimen.clock_padding_start),
-            0,
-            0,
-            0
-        )
         smallClockFrame.clipChildren = false
         return smallClockFrame
     }
+
+    private fun getSmallClockTopMargin() =
+        getStatusBarHeight(appContext.resources) +
+            appContext.resources.getDimensionPixelSize(R.dimen.small_clock_padding_top)
+
+    private fun getSmallClockStartPadding() =
+        appContext.resources.getDimensionPixelSize(R.dimen.clock_padding_start)
 
     fun updateColorForAllClocks(@ColorInt seedColor: Int?) {
         clockControllers.values.forEach { it.events.onSeedColorChanged(seedColor = seedColor) }
     }
 
     fun updateColor(clockId: String, @ColorInt seedColor: Int?) {
-        return (clockControllers[clockId] ?: initClockController(clockId))
-            .events
-            .onSeedColorChanged(seedColor)
+        clockControllers[clockId]?.events?.onSeedColorChanged(seedColor)
+    }
+
+    fun updateRegionDarkness() {
+        val isRegionDark = isLockscreenWallpaperDark()
+        clockControllers.values.forEach {
+            it.largeClock.events.onRegionDarknessChanged(isRegionDark)
+            it.smallClock.events.onRegionDarknessChanged(isRegionDark)
+        }
+    }
+
+    private fun isLockscreenWallpaperDark(): Boolean {
+        val colors = wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_LOCK)
+        return (colors?.colorHints?.and(WallpaperColors.HINT_SUPPORTS_DARK_TEXT)) == 0
     }
 
     fun updateTimeFormat(clockId: String) {
@@ -137,30 +165,33 @@ class ClockViewFactory(
             registry.createExampleClock(clockId).also { it?.initialize(resources, 0f, 0f) }
         checkNotNull(controller)
 
-        // Configure light/dark theme
-        val isLightTheme = TypedValue()
-        appContext.theme.resolveAttribute(android.R.attr.isLightTheme, isLightTheme, true)
-        val isRegionDark = isLightTheme.data == 0
-        controller.largeClock.events.onRegionDarknessChanged(isRegionDark)
-        // Configure font size
+        val isWallpaperDark = isLockscreenWallpaperDark()
+        // Initialize large clock
+        controller.largeClock.events.onRegionDarknessChanged(isWallpaperDark)
         controller.largeClock.events.onFontSettingChanged(
             resources.getDimensionPixelSize(R.dimen.large_clock_text_size).toFloat()
         )
         controller.largeClock.events.onTargetRegionChanged(getLargeClockRegion())
 
-        controller.smallClock.events.onRegionDarknessChanged(isRegionDark)
+        // Initialize small clock
+        controller.smallClock.events.onRegionDarknessChanged(isWallpaperDark)
         controller.smallClock.events.onFontSettingChanged(
             resources.getDimensionPixelSize(R.dimen.small_clock_text_size).toFloat()
         )
         controller.smallClock.events.onTargetRegionChanged(getSmallClockRegion())
 
-        // Use placeholder for weather clock preview in picker
+        // Use placeholder for weather clock preview in picker.
+        // Use locale default temp unit since assistant default is not available in this context.
+        val useCelsius =
+            LocalePreferences.getTemperatureUnit() == LocalePreferences.TemperatureUnit.CELSIUS
         controller.events.onWeatherDataChanged(
             WeatherData(
                 description = DESCRIPTION_PLACEHODLER,
                 state = WEATHERICON_PLACEHOLDER,
-                temperature = TEMPERATURE_PLACEHOLDER,
-                useCelsius = USE_CELSIUS_PLACEHODLER,
+                temperature =
+                    if (useCelsius) TEMPERATURE_CELSIUS_PLACEHOLDER
+                    else TEMPERATURE_FAHRENHEIT_PLACEHOLDER,
+                useCelsius = useCelsius,
             )
         )
         return controller
@@ -185,17 +216,15 @@ class ClockViewFactory(
      * and position the clock view
      */
     private fun getSmallClockRegion(): Rect {
-        val topMargin =
-            getStatusBarHeight(resources) +
-                resources.getDimensionPixelSize(R.dimen.small_clock_padding_top)
-        val start = resources.getDimensionPixelSize(R.dimen.clock_padding_start)
+        val topMargin = getSmallClockTopMargin()
         val targetHeight = resources.getDimensionPixelSize(R.dimen.small_clock_height)
-        return Rect(start, topMargin, screenSize.x, topMargin + targetHeight)
+        return Rect(getSmallClockStartPadding(), topMargin, screenSize.x, topMargin + targetHeight)
     }
 
     companion object {
         const val DESCRIPTION_PLACEHODLER = ""
-        const val TEMPERATURE_PLACEHOLDER = 58
+        const val TEMPERATURE_FAHRENHEIT_PLACEHOLDER = 58
+        const val TEMPERATURE_CELSIUS_PLACEHOLDER = 21
         val WEATHERICON_PLACEHOLDER = WeatherData.WeatherStateIcon.MOSTLY_SUNNY
         const val USE_CELSIUS_PLACEHODLER = false
 

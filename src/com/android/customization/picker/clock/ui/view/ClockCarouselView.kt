@@ -16,6 +16,7 @@
 package com.android.customization.picker.clock.ui.view
 
 import android.content.Context
+import android.content.res.Resources
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
@@ -23,8 +24,15 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.constraintlayout.helper.widget.Carousel
 import androidx.constraintlayout.motion.widget.MotionLayout
+import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.view.doOnPreDraw
+import androidx.core.view.get
+import androidx.core.view.isNotEmpty
+import com.android.customization.picker.clock.shared.ClockSize
+import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselItemViewModel
 import com.android.systemui.plugins.ClockController
 import com.android.wallpaper.R
+import com.android.wallpaper.picker.FixedWidthDisplayRatioFrameLayout
 import java.lang.Float.max
 
 class ClockCarouselView(
@@ -39,25 +47,59 @@ class ClockCarouselView(
     val carousel: Carousel
     private val motionLayout: MotionLayout
     private lateinit var adapter: ClockCarouselAdapter
-    private var scalingUpClockController: ClockController? = null
-    private var scalingDownClockController: ClockController? = null
-    private var scalingUpClockView: View? = null
-    private var scalingDownClockView: View? = null
-    private var showingCardView: View? = null
-    private var hidingCardView: View? = null
+    private lateinit var clockViewFactory: ClockViewFactory
+    private var toCenterClockController: ClockController? = null
+    private var offCenterClockController: ClockController? = null
+    private var toCenterClockScaleView: View? = null
+    private var offCenterClockScaleView: View? = null
+    private var toCenterClockHostView: ClockHostView? = null
+    private var offCenterClockHostView: ClockHostView? = null
+    private var toCenterCardView: View? = null
+    private var offCenterCardView: View? = null
 
     init {
         val clockCarousel = LayoutInflater.from(context).inflate(R.layout.clock_carousel, this)
         carousel = clockCarousel.requireViewById(R.id.carousel)
         motionLayout = clockCarousel.requireViewById(R.id.motion_container)
+        motionLayout.contentDescription = context.getString(R.string.custom_clocks_label)
+    }
+
+    /**
+     * Make sure to set [clockViewFactory] before calling any functions from [ClockCarouselView].
+     */
+    fun setClockViewFactory(factory: ClockViewFactory) {
+        clockViewFactory = factory
+    }
+
+    fun transitionToNext() {
+        val index = (carousel.currentIndex + 1) % carousel.count
+        if (index < carousel.count && index > 0) {
+            carousel.transitionToIndex(index, 0)
+        }
+    }
+
+    fun transitionToPrevious() {
+        val index = (carousel.currentIndex - 1) % carousel.count
+        if (index < carousel.count && index > 0) {
+            carousel.transitionToIndex(index, 0)
+        }
+    }
+
+    fun getContentDescription(index: Int): String {
+        return adapter.getContentDescription(index, resources)
     }
 
     fun setUpClockCarouselView(
-        clockIds: List<String>,
-        onGetClockController: (clockId: String) -> ClockController,
-        onClockSelected: (clockId: String) -> Unit,
+        clockSize: ClockSize,
+        clocks: List<ClockCarouselItemViewModel>,
+        onClockSelected: (clock: ClockCarouselItemViewModel) -> Unit,
+        isTwoPaneAndSmallWidth: Boolean,
     ) {
-        adapter = ClockCarouselAdapter(clockIds, onGetClockController, onClockSelected)
+        if (isTwoPaneAndSmallWidth) {
+            overrideScreenPreviewWidth()
+        }
+
+        adapter = ClockCarouselAdapter(clockSize, clocks, clockViewFactory, onClockSelected)
         carousel.setAdapter(adapter)
         carousel.refresh()
         motionLayout.setTransitionListener(
@@ -68,70 +110,146 @@ class ClockCarouselView(
                     startId: Int,
                     endId: Int
                 ) {
-                    val scalingDownClockId = adapter.clockIds[carousel.currentIndex]
-                    val scalingUpIdx =
-                        if (endId == R.id.next) (carousel.currentIndex + 1) % adapter.count()
-                        else (carousel.currentIndex - 1 + adapter.count()) % adapter.count()
-                    val scalingUpClockId = adapter.clockIds[scalingUpIdx]
-                    scalingDownClockController = adapter.onGetClockController(scalingDownClockId)
-                    scalingUpClockController = adapter.onGetClockController(scalingUpClockId)
-                    scalingDownClockView = motionLayout?.findViewById(R.id.clock_scale_view_2)
-                    scalingUpClockView =
-                        motionLayout?.findViewById(
-                            if (endId == R.id.next) R.id.clock_scale_view_3
-                            else R.id.clock_scale_view_1
-                        )
-                    showingCardView = motionLayout?.findViewById(R.id.item_card_2)
-                    hidingCardView =
-                        motionLayout?.findViewById(
-                            if (endId == R.id.next) R.id.item_card_3 else R.id.item_card_1
-                        )
-                    setCardAnimationState(true)
+                    if (motionLayout == null) {
+                        return
+                    }
+                    when (clockSize) {
+                        ClockSize.DYNAMIC -> prepareDynamicClockView(motionLayout, endId)
+                        ClockSize.SMALL -> prepareSmallClockView(motionLayout, endId)
+                    }
+                    prepareCardView(motionLayout, endId)
+                    setCarouselItemAnimationState(true)
                 }
 
                 override fun onTransitionChange(
                     motionLayout: MotionLayout?,
                     startId: Int,
                     endId: Int,
-                    progress: Float
+                    progress: Float,
                 ) {
-                    scalingDownClockController
-                        ?.largeClock
-                        ?.animations
-                        ?.onPickerCarouselSwiping(1 - progress)
-                    scalingUpClockController
-                        ?.largeClock
-                        ?.animations
-                        ?.onPickerCarouselSwiping(progress)
-                    val scalingUpScale = getScalingUpScale(progress)
-                    val scalingDownScale = getScalingDownScale(progress)
-                    scalingUpClockView?.scaleX = scalingUpScale
-                    scalingUpClockView?.scaleY = scalingUpScale
-                    scalingDownClockView?.scaleX = scalingDownScale
-                    scalingDownClockView?.scaleY = scalingDownScale
-                    showingCardView?.alpha = getShowingAlpha(progress)
-                    hidingCardView?.alpha = getHidingAlpha(progress)
+                    when (clockSize) {
+                        ClockSize.DYNAMIC -> onDynamicClockViewTransition(progress)
+                        ClockSize.SMALL -> onSmallClockViewTransition(progress)
+                    }
+                    onCardViewTransition(progress)
                 }
 
                 override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) {
-                    setCardAnimationState(currentId == R.id.start)
+                    setCarouselItemAnimationState(currentId == R.id.start)
                 }
 
-                private fun setCardAnimationState(isStart: Boolean) {
-                    scalingDownClockView?.scaleX = if (isStart) 1f else CLOCK_CAROUSEL_VIEW_SCALE
-                    scalingDownClockView?.scaleY = if (isStart) 1f else CLOCK_CAROUSEL_VIEW_SCALE
-                    scalingUpClockView?.scaleX = if (isStart) CLOCK_CAROUSEL_VIEW_SCALE else 1f
-                    scalingUpClockView?.scaleY = if (isStart) CLOCK_CAROUSEL_VIEW_SCALE else 1f
-                    scalingDownClockController
+                private fun prepareDynamicClockView(motionLayout: MotionLayout, endId: Int) {
+                    val scalingDownClockId = adapter.clocks[carousel.currentIndex].clockId
+                    val scalingUpIdx =
+                        if (endId == R.id.next) (carousel.currentIndex + 1) % adapter.count()
+                        else (carousel.currentIndex - 1 + adapter.count()) % adapter.count()
+                    val scalingUpClockId = adapter.clocks[scalingUpIdx].clockId
+                    offCenterClockController = clockViewFactory.getController(scalingDownClockId)
+                    toCenterClockController = clockViewFactory.getController(scalingUpClockId)
+                    offCenterClockScaleView = motionLayout.findViewById(R.id.clock_scale_view_2)
+                    toCenterClockScaleView =
+                        motionLayout.findViewById(
+                            if (endId == R.id.next) R.id.clock_scale_view_3
+                            else R.id.clock_scale_view_1
+                        )
+                }
+
+                private fun prepareSmallClockView(motionLayout: MotionLayout, endId: Int) {
+                    offCenterClockHostView = motionLayout.findViewById(R.id.clock_host_view_2)
+                    toCenterClockHostView =
+                        motionLayout.findViewById(
+                            if (endId == R.id.next) R.id.clock_host_view_3
+                            else R.id.clock_host_view_1
+                        )
+                }
+
+                private fun prepareCardView(motionLayout: MotionLayout, endId: Int) {
+                    offCenterCardView = motionLayout.findViewById(R.id.item_card_2)
+                    toCenterCardView =
+                        motionLayout.findViewById(
+                            if (endId == R.id.next) R.id.item_card_3 else R.id.item_card_1
+                        )
+                }
+
+                private fun onCardViewTransition(progress: Float) {
+                    offCenterCardView?.alpha = getShowingAlpha(progress)
+                    toCenterCardView?.alpha = getHidingAlpha(progress)
+                }
+
+                private fun onDynamicClockViewTransition(progress: Float) {
+                    offCenterClockController
                         ?.largeClock
                         ?.animations
-                        ?.onPickerCarouselSwiping(if (isStart) 1f else 0f)
-                    scalingUpClockController
+                        ?.onPickerCarouselSwiping(1 - progress)
+                    toCenterClockController
                         ?.largeClock
                         ?.animations
-                        ?.onPickerCarouselSwiping(if (isStart) 0f else 1f)
-                    showingCardView?.alpha = if (isStart) 0f else 1f
-                    hidingCardView?.alpha = if (isStart) 1f else 0f
+                        ?.onPickerCarouselSwiping(progress)
+                    val scalingDownScale = getScalingDownScale(progress)
+                    val scalingUpScale = getScalingUpScale(progress)
+                    offCenterClockScaleView?.scaleX = scalingDownScale
+                    offCenterClockScaleView?.scaleY = scalingDownScale
+                    toCenterClockScaleView?.scaleX = scalingUpScale
+                    toCenterClockScaleView?.scaleY = scalingUpScale
+                }
+
+                private fun onSmallClockViewTransition(progress: Float) {
+                    val offCenterClockHostView = offCenterClockHostView ?: return
+                    val toCenterClockHostView = toCenterClockHostView ?: return
+                    val offCenterClockFrame =
+                        if (offCenterClockHostView.isNotEmpty()) {
+                            offCenterClockHostView[0]
+                        } else {
+                            null
+                        }
+                            ?: return
+                    val toCenterClockFrame =
+                        if (toCenterClockHostView.isNotEmpty()) {
+                            toCenterClockHostView[0]
+                        } else {
+                            null
+                        }
+                            ?: return
+                    offCenterClockHostView.doOnPreDraw {
+                        it.pivotX = progress * it.width / 2
+                        it.pivotY = progress * it.height / 2
+                    }
+                    toCenterClockHostView.doOnPreDraw {
+                        it.pivotX = (1 - progress) * it.width / 2
+                        it.pivotY = (1 - progress) * it.height / 2
+                    }
+                    offCenterClockFrame.translationX =
+                        getTranslationDistance(
+                            offCenterClockHostView.width,
+                            offCenterClockFrame.width,
+                            offCenterClockFrame.left,
+                        ) * progress
+                    offCenterClockFrame.translationY =
+                        getTranslationDistance(
+                            offCenterClockHostView.height,
+                            offCenterClockFrame.height,
+                            offCenterClockFrame.top,
+                        ) * progress
+                    toCenterClockFrame.translationX =
+                        getTranslationDistance(
+                            toCenterClockHostView.width,
+                            toCenterClockFrame.width,
+                            toCenterClockFrame.left,
+                        ) * (1 - progress)
+                    toCenterClockFrame.translationY =
+                        getTranslationDistance(
+                            toCenterClockHostView.height,
+                            toCenterClockFrame.height,
+                            toCenterClockFrame.top,
+                        ) * (1 - progress)
+                }
+
+                private fun setCarouselItemAnimationState(isStart: Boolean) {
+                    when (clockSize) {
+                        ClockSize.DYNAMIC -> onDynamicClockViewTransition(if (isStart) 0f else 1f)
+                        ClockSize.SMALL -> onSmallClockViewTransition(if (isStart) 0f else 1f)
+                    }
+                    onCardViewTransition(if (isStart) 0f else 1f)
                 }
 
                 override fun onTransitionTrigger(
@@ -154,14 +272,64 @@ class ClockCarouselView(
         }
     }
 
-    class ClockCarouselAdapter(
-        val clockIds: List<String>,
-        val onGetClockController: (clockId: String) -> ClockController,
-        private val onClockSelected: (clockId: String) -> Unit
+    private fun overrideScreenPreviewWidth() {
+        val overrideWidth =
+            context.resources.getDimensionPixelSize(
+                R.dimen.screen_preview_width_for_2_pane_small_width
+            )
+        itemViewIds.forEach { id ->
+            val itemView = motionLayout.requireViewById<FrameLayout>(id)
+            val itemViewLp = itemView.layoutParams
+            itemViewLp.width = overrideWidth
+            itemView.layoutParams = itemViewLp
+
+            getClockScaleViewId(id)?.let {
+                val scaleView = motionLayout.requireViewById<FixedWidthDisplayRatioFrameLayout>(it)
+                val scaleViewLp = scaleView.layoutParams
+                scaleViewLp.width = overrideWidth
+                scaleView.layoutParams = scaleViewLp
+            }
+        }
+
+        val previousConstaintSet = motionLayout.getConstraintSet(R.id.previous)
+        val startConstaintSet = motionLayout.getConstraintSet(R.id.start)
+        val nextConstaintSet = motionLayout.getConstraintSet(R.id.next)
+        val constaintSetList =
+            listOf<ConstraintSet>(previousConstaintSet, startConstaintSet, nextConstaintSet)
+        constaintSetList.forEach { constraintSet ->
+            itemViewIds.forEach { id ->
+                constraintSet.getConstraint(id)?.let { constraint ->
+                    val layout = constraint.layout
+                    if (
+                        constraint.layout.mWidth ==
+                            context.resources.getDimensionPixelSize(R.dimen.screen_preview_width)
+                    ) {
+                        layout.mWidth = overrideWidth
+                    }
+                    if (
+                        constraint.layout.widthMax ==
+                            context.resources.getDimensionPixelSize(R.dimen.screen_preview_width)
+                    ) {
+                        layout.widthMax = overrideWidth
+                    }
+                }
+            }
+        }
+    }
+
+    private class ClockCarouselAdapter(
+        val clockSize: ClockSize,
+        val clocks: List<ClockCarouselItemViewModel>,
+        private val clockViewFactory: ClockViewFactory,
+        private val onClockSelected: (clock: ClockCarouselItemViewModel) -> Unit
     ) : Carousel.Adapter {
 
+        fun getContentDescription(index: Int, resources: Resources): String {
+            return clocks[index].getContentDescription(resources)
+        }
+
         override fun count(): Int {
-            return clockIds.size
+            return clocks.size
         }
 
         override fun populate(view: View?, index: Int) {
@@ -175,39 +343,119 @@ class ClockCarouselView(
             val clockHostView =
                 getClockHostViewId(viewRoot.id)?.let { viewRoot.findViewById(it) as? ClockHostView }
                     ?: return
+            val clockId = clocks[index].clockId
+
+            // Add the clock view to the cloc host view
             clockHostView.removeAllViews()
-            val clockView = onGetClockController(clockIds[index]).largeClock.view
+            val clockView =
+                when (clockSize) {
+                    ClockSize.DYNAMIC -> clockViewFactory.getLargeView(clockId)
+                    ClockSize.SMALL -> clockViewFactory.getSmallView(clockId)
+                }
             // The clock view might still be attached to an existing parent. Detach before adding to
             // another parent.
             (clockView.parent as? ViewGroup)?.removeView(clockView)
             clockHostView.addView(clockView)
-            // initialize scaling state for all clocks
-            if (!isMiddleView(viewRoot.id)) {
-                cardView.alpha = 1f
-                clockScaleView.scaleX = CLOCK_CAROUSEL_VIEW_SCALE
-                clockScaleView.scaleY = CLOCK_CAROUSEL_VIEW_SCALE
-                onGetClockController(clockIds[index])
-                    .largeClock
-                    .animations
-                    .onPickerCarouselSwiping(0F)
-            } else {
-                cardView.alpha = 0f
+
+            val isMiddleView = isMiddleView(viewRoot.id)
+
+            // Accessibility
+            viewRoot.contentDescription = getContentDescription(index, view.resources)
+            viewRoot.isSelected = isMiddleView
+
+            when (clockSize) {
+                ClockSize.DYNAMIC ->
+                    initializeDynamicClockView(
+                        isMiddleView,
+                        clockScaleView,
+                        clockId,
+                        clockHostView,
+                    )
+                ClockSize.SMALL ->
+                    initializeSmallClockView(
+                        isMiddleView,
+                        clockHostView,
+                        clockView,
+                    )
+            }
+            cardView.alpha = if (isMiddleView) 0f else 1f
+        }
+
+        private fun initializeDynamicClockView(
+            isMiddleView: Boolean,
+            clockScaleView: View,
+            clockId: String,
+            clockHostView: ClockHostView,
+        ) {
+            clockHostView.doOnPreDraw {
+                it.pivotX = it.width / 2F
+                it.pivotY = it.height / 2F
+            }
+            if (isMiddleView) {
                 clockScaleView.scaleX = 1f
                 clockScaleView.scaleY = 1f
-                onGetClockController(clockIds[index])
+                clockViewFactory
+                    .getController(clockId)
                     .largeClock
                     .animations
                     .onPickerCarouselSwiping(1F)
+            } else {
+                clockScaleView.scaleX = CLOCK_CAROUSEL_VIEW_SCALE
+                clockScaleView.scaleY = CLOCK_CAROUSEL_VIEW_SCALE
+                clockViewFactory
+                    .getController(clockId)
+                    .largeClock
+                    .animations
+                    .onPickerCarouselSwiping(0F)
+            }
+        }
+
+        private fun initializeSmallClockView(
+            isMiddleView: Boolean,
+            clockHostView: ClockHostView,
+            clockView: View,
+        ) {
+            clockHostView.doOnPreDraw {
+                if (isMiddleView) {
+                    it.pivotX = 0F
+                    it.pivotY = 0F
+                    clockView.translationX = 0F
+                    clockView.translationY = 0F
+                } else {
+                    it.pivotX = it.width / 2F
+                    it.pivotY = it.height / 2F
+                    clockView.translationX =
+                        getTranslationDistance(
+                            clockHostView.width,
+                            clockView.width,
+                            clockView.left,
+                        )
+                    clockView.translationY =
+                        getTranslationDistance(
+                            clockHostView.height,
+                            clockView.height,
+                            clockView.top,
+                        )
+                }
             }
         }
 
         override fun onNewItem(index: Int) {
-            onClockSelected.invoke(clockIds[index])
+            onClockSelected.invoke(clocks[index])
         }
     }
 
     companion object {
         const val CLOCK_CAROUSEL_VIEW_SCALE = 0.5f
+
+        val itemViewIds =
+            listOf(
+                R.id.item_view_0,
+                R.id.item_view_1,
+                R.id.item_view_2,
+                R.id.item_view_3,
+                R.id.item_view_4
+            )
 
         fun getScalingUpScale(progress: Float) =
             CLOCK_CAROUSEL_VIEW_SCALE + progress * (1f - CLOCK_CAROUSEL_VIEW_SCALE)
@@ -257,6 +505,14 @@ class ClockCarouselView(
 
         fun isMiddleView(rootViewId: Int): Boolean {
             return rootViewId == R.id.item_view_2
+        }
+
+        private fun getTranslationDistance(
+            hostLength: Int,
+            frameLength: Int,
+            edgeDimen: Int,
+        ): Float {
+            return ((hostLength - frameLength) / 2 - edgeDimen).toFloat()
         }
     }
 }

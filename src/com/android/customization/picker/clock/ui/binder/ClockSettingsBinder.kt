@@ -75,7 +75,9 @@ object ClockSettingsBinder {
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                    seekBar?.progress?.let { viewModel.onSliderProgressStop(it) }
+                    seekBar?.progress?.let {
+                        lifecycleOwner.lifecycleScope.launch { viewModel.onSliderProgressStop(it) }
+                    }
                 }
             }
         )
@@ -157,11 +159,12 @@ object ClockSettingsBinder {
                         if (selectedPosition != -1) {
                             val colorOptionContainerListView: LinearLayout =
                                 view.requireViewById(R.id.color_options)
+
                             val selectedView =
-                                colorOptionContainerListView.requireViewById<View>(
+                                colorOptionContainerListView.findViewById<View>(
                                     COLOR_PICKER_ITEM_PREFIX_ID + selectedPosition
                                 )
-                            selectedView.parent.requestChildFocus(selectedView, selectedView)
+                            selectedView?.parent?.requestChildFocus(selectedView, selectedView)
                         }
                     }
                 }
@@ -173,23 +176,23 @@ object ClockSettingsBinder {
                             ::Pair,
                         )
                         .collect { (clockId, size) ->
-                            val clockView =
-                                if (size == ClockSize.DYNAMIC) {
-                                    clockViewFactory.getLargeView(clockId)
-                                } else {
-                                    clockViewFactory.getSmallView(clockId)
-                                }
-                            (clockView.parent as? ViewGroup)?.removeView(clockView)
                             clockHostView.removeAllViews()
+                            val clockView =
+                                when (size) {
+                                    ClockSize.DYNAMIC -> clockViewFactory.getLargeView(clockId)
+                                    ClockSize.SMALL -> clockViewFactory.getSmallView(clockId)
+                                }
+                            // The clock view might still be attached to an existing parent. Detach
+                            // before adding to another parent.
+                            (clockView.parent as? ViewGroup)?.removeView(clockView)
                             clockHostView.addView(clockView)
-
                             when (size) {
                                 ClockSize.DYNAMIC -> {
                                     sizeOptions.radioButtonDynamic.isChecked = true
                                     sizeOptions.radioButtonSmall.isChecked = false
                                     clockHostView.doOnPreDraw {
-                                        it.pivotX = (it.width / 2).toFloat()
-                                        it.pivotY = (it.height / 2).toFloat()
+                                        it.pivotX = it.width / 2F
+                                        it.pivotY = it.height / 2F
                                     }
                                 }
                                 ClockSize.SMALL -> {
