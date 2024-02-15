@@ -17,7 +17,21 @@
 // Build rule for WallpaperPicker2 tests
 //
 package {
+    default_team: "trendy_team_customization_picker",
     default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+filegroup {
+    name: "ThemePickerTests_srcs",
+
+    visibility: [
+        "//visibility:public"
+    ],
+
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.kt",
+    ],
 }
 
 android_test {
@@ -25,15 +39,29 @@ android_test {
 
     defaults: ["ThemePicker_defaults"],
     srcs: [
-        "src/**/*.java",
-        "src/**/*.kt",
+        ":ThemePickerTests_srcs",
+        ":WallpaperPicker2Tests_srcs",
+        "module/src/com/android/customization/TestModule.kt",
     ],
+    exclude_srcs: [":ThemePicker_src_prod"],
     static_libs: [
         "WallpaperPicker2TestLib",
+        "WallpaperPicker2TestRunner",
+        "ThemePickerTestLib",
+        "SystemUICustomizationTestUtils",
+        "androidx.test.espresso.core",
+        "androidx.test.espresso.contrib",
+        "androidx.test.espresso.intents",
+        "androidx.test.ext.junit",
         "androidx.test.rules",
+        "hamcrest-library",
+        "hamcrest",
+        "hilt_android",
+        "hilt_android_testing",
+        "mockito-target-minus-junit4",
         "junit",
         "kotlinx_coroutines_test",
-        "truth-prebuilt",
+        "truth",
     ],
     libs: [
         "android.test.runner",
@@ -41,7 +69,7 @@ android_test {
         "android.test.mock",
     ],
 
-    kotlincflags: ["-Xjvm-default=enable"],
+    kotlincflags: ["-Xjvm-default=all"],
     platform_apis: true,
     test_suites: ["device-tests"],
 }

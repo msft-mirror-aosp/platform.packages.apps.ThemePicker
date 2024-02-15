@@ -26,7 +26,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.android.customization.picker.quickaffordance.ui.viewmodel.KeyguardQuickAffordancePickerViewModel
-import com.android.wallpaper.R
+import com.android.themepicker.R
 import com.android.wallpaper.picker.common.icon.ui.viewbinder.IconViewBinder
 import com.android.wallpaper.picker.common.text.ui.viewbinder.TextViewBinder
 import kotlinx.coroutines.flow.collectLatest
@@ -48,7 +48,7 @@ object KeyguardQuickAffordanceSectionViewBinder {
 
         lifecycleOwner.lifecycleScope.launch {
             viewModel.summary
-                .flowWithLifecycle(lifecycleOwner.lifecycle, Lifecycle.State.RESUMED)
+                .flowWithLifecycle(lifecycleOwner.lifecycle, Lifecycle.State.STARTED)
                 .collectLatest { summary ->
                     TextViewBinder.bind(
                         view = descriptionView,

@@ -22,6 +22,7 @@
     <string name="clock_title" msgid="1974314575211361352">"នាឡិកាផ្ទាល់ខ្លួន"</string>
     <string name="clock_description" msgid="3563839327378948">"ជ្រើសរើសនាឡិកាផ្ទាល់ខ្លួន"</string>
     <string name="clock_picker_entry_content_description" msgid="8377139273468595734">"ប្ដូរនាឡិកា​ផ្ទាល់ខ្លួន"</string>
+    <string name="select_clock_action_description" msgid="5025888763471843648">"ជម្រើសមុខនាឡិកា <xliff:g id="ID_1">%1$s</xliff:g>"</string>
     <string name="clock_settings_title" msgid="2050906379377120431">"ពណ៌ និងទំហំនាឡិកា"</string>
     <string name="clock_color_and_size_title" msgid="7146791234905111351">"ពណ៌ និងទំហំនាឡិកា"</string>
     <string name="clock_color_and_size_description" msgid="6578061553012886817">"<xliff:g id="ID_1">%1$s</xliff:g>, <xliff:g id="ID_2">%2$s</xliff:g>"</string>
@@ -40,6 +41,7 @@
     <string name="clock_size_dynamic_description" msgid="2776620745774561662">"ទំហំនាឡិកា​ផ្លាស់ប្ដូរទៅតាមខ្លឹមសារ​លើអេក្រង់ចាក់សោ"</string>
     <string name="clock_size_large" msgid="3143248715744138979">"ធំ"</string>
     <string name="clock_size_small" msgid="2280449912094164133">"តូច"</string>
+    <string name="clock_size_small_description" msgid="4089511196955732480">"នាឡិកា​តូចមួយ​បង្ហាញ​នៅជ្រុងនៃ​អេក្រង់​របស់អ្នក"</string>
     <string name="grid_title" msgid="1688173478777254123">"ក្រឡា​កម្មវិធី"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"ប្រើ"</string>
     <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"ចុច ដើម្បី​កែ"</string>
@@ -65,6 +67,9 @@
     <string name="font_card_body" msgid="6790525594503904468">"បញ្ចូលពុម្ព​អក្សរ​ដែលអ្នកចូលចិត្ត​ទៅគ្រប់អេក្រង់"</string>
     <string name="grid_options_title" msgid="7071930966989877023">"ជ្រើសរើស​ទំហំក្រឡា"</string>
     <string name="grid_title_pattern" msgid="9188866567612607806">"<xliff:g id="ID_1">%1$d</xliff:g>x<xliff:g id="ID_2">%2$d</xliff:g>"</string>
+    <string name="apply_grid_btn_note" msgid="2966021967355139181">"ការប្ដូរទំហំក្រឡានឹងផ្ទុកលំហការងារឡើងវិញ និងអាចចំណាយពេលបន្តិច។"</string>
+    <string name="toast_of_changing_grid" msgid="3515633981312731121">"កំពុងផ្ទុកឡើងវិញនូវលំហការងារដែលមានក្រឡា %1$s"</string>
+    <string name="toast_of_failure_to_change_grid" msgid="1349622908271736044">"មិនអាចផ្ទុកឡើងវិញនូវលំហការងារដែលមានក្រឡា %1$s ទេ"</string>
     <string name="applied_theme_msg" msgid="3749018706366796244">"បានកំណត់​រចនាប័ទ្មដោយ​ជោគជ័យ"</string>
     <string name="applied_clock_msg" msgid="1303338016701443767">"បានកំណត់​នាឡិកាដោយ​ជោគជ័យ"</string>
     <string name="applied_grid_msg" msgid="3250499654436933034">"បានកំណត់​ក្រឡាដោយ​ជោគជ័យ"</string>
@@ -98,6 +103,7 @@
     <string name="accessibility_custom_color_title" msgid="4124246598886320663">"ពណ៌​ផ្ទាល់ខ្លួន"</string>
     <string name="accessibility_custom_shape_title" msgid="7708408259374643129">"រូបរាង​ផ្ទាល់ខ្លួន"</string>
     <string name="accessibility_custom_name_title" msgid="5494460518085463262">"ឈ្មោះ​រចនាប័ទ្ម​ផ្ទាល់ខ្លួន"</string>
+    <string name="accessibility_clock_slider_description" msgid="8374135133110681332">"កម្រិតពណ៌"</string>
     <string name="mode_title" msgid="2394873501427436055">"ទម្រង់រចនាងងឹត"</string>
     <string name="mode_disabled_msg" msgid="9196245518435936512">"បានបិទ​ជា​បណ្តោះអាសន្ន ដោយសារ​មុខងារ​សន្សំ​ថ្ម"</string>
     <string name="mode_changed" msgid="2243581369395418584">"បាន​ផ្លាស់ប្ដូរ​រចនាប័ទ្ម"</string>
@@ -125,7 +131,6 @@
     <string name="keyguard_quick_affordance_two_selected_template" msgid="1757099194522296363">"<xliff:g id="FIRST">%1$s</xliff:g>, <xliff:g id="SECOND">%2$s</xliff:g>"</string>
     <string name="keyguard_quick_affordance_none_selected" msgid="8494127020144112003">"គ្មាន"</string>
     <string name="show_notifications_on_lock_screen" msgid="4157744243084646720">"បង្ហាញការជូនដំណឹងនៅលើអេក្រង់ចាក់សោ"</string>
-    <string name="hide_notifications_on_lock_screen" msgid="7413548956484779174">"លាក់ការជូនដំណឹងនៅលើអេក្រង់ចាក់សោ"</string>
     <string name="more_settings_section_title" msgid="1331425454775815958">"ជម្រើសអេក្រង់ចាក់សោច្រើនទៀត"</string>
     <string name="more_settings_section_description" msgid="1860115709122398325">"ឯកជនភាព, Now Playing និងអ្វីៗច្រើនទៀត"</string>
     <string name="more_colors" msgid="3191071655353004591">"ពណ៌​ច្រើនទៀត"</string>
@@ -135,4 +140,7 @@
     <string name="content_description_expressive_color_option" msgid="6081295313456341282">"ទម្រង់រចនាបែបបង្ហាញចម្បង"</string>
     <string name="content_description_default_color_option" msgid="7011899327541080695">"ជម្រើសពណ៌លំនាំដើម"</string>
     <string name="content_description_color_option" msgid="4169813692012119578">"ជម្រើស​ពណ៌ <xliff:g id="ID_1">%1$d</xliff:g>"</string>
+    <string name="scroll_forward_and_select" msgid="6156132388656395769">"អូសទៅឆ្វេង ដើម្បីជ្រើសរើសមុខនាឡិកាផ្សេង"</string>
+    <string name="scroll_backward_and_select" msgid="5472202348434803757">"អូសទៅស្ដាំ ដើម្បីជ្រើសរើសមុខនាឡិកាផ្សេង"</string>
+    <string name="custom_clocks_label" msgid="8168419717593569347">"នាឡិកាផ្ទាល់ខ្លួន"</string>
 </resources>

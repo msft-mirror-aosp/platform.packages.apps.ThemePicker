@@ -23,7 +23,6 @@ import android.graphics.Rect
 import android.view.TouchDelegate
 import android.view.View
 import android.view.View.OnAttachStateChangeListener
-import android.view.ViewGroup
 import android.view.ViewStub
 import androidx.activity.ComponentActivity
 import androidx.constraintlayout.helper.widget.Carousel
@@ -39,15 +38,19 @@ import com.android.customization.picker.clock.ui.fragment.ClockSettingsFragment
 import com.android.customization.picker.clock.ui.view.ClockCarouselView
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
-import com.android.wallpaper.R
+import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
+import com.android.themepicker.R
+import com.android.wallpaper.model.CustomizationSectionController
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController
-import com.android.wallpaper.model.WallpaperColorsViewModel
 import com.android.wallpaper.model.WallpaperPreviewNavigator
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory
 import com.android.wallpaper.module.CustomizationSections
+import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
+import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewClickView
 import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewSectionController
 import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewView
+import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel
 import com.android.wallpaper.util.DisplayUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -61,7 +64,7 @@ class PreviewWithClockCarouselSectionController(
     private val lifecycleOwner: LifecycleOwner,
     private val screen: CustomizationSections.Screen,
     wallpaperInfoFactory: CurrentWallpaperInfoFactory,
-    colorViewModel: WallpaperColorsViewModel,
+    wallpaperColorsRepository: WallpaperColorsRepository,
     displayUtils: DisplayUtils,
     clockCarouselViewModelFactory: ClockCarouselViewModel.Factory,
     private val clockViewFactory: ClockViewFactory,
@@ -69,21 +72,25 @@ class PreviewWithClockCarouselSectionController(
     private val navigationController: CustomizationSectionNavigationController,
     wallpaperInteractor: WallpaperInteractor,
     themedIconInteractor: ThemedIconInteractor,
+    colorPickerInteractor: ColorPickerInteractor,
     wallpaperManager: WallpaperManager,
     private val isTwoPaneAndSmallWidth: Boolean,
+    customizationPickerViewModel: CustomizationPickerViewModel,
 ) :
     PreviewWithThemeSectionController(
         activity,
         lifecycleOwner,
         screen,
         wallpaperInfoFactory,
-        colorViewModel,
+        wallpaperColorsRepository,
         displayUtils,
         wallpaperPreviewNavigator,
         wallpaperInteractor,
         themedIconInteractor,
+        colorPickerInteractor,
         wallpaperManager,
         isTwoPaneAndSmallWidth,
+        customizationPickerViewModel,
     ) {
 
     private val viewModel =
@@ -97,11 +104,16 @@ class PreviewWithClockCarouselSectionController(
 
     override val hideLockScreenClockPreview = true
 
-    override fun createView(context: Context): ScreenPreviewView {
-        val view = super.createView(context)
+    override fun createView(
+        context: Context,
+        params: CustomizationSectionController.ViewCreationParams,
+    ): ScreenPreviewView {
+        val view = super.createView(context, params)
         if (screen == CustomizationSections.Screen.LOCK_SCREEN) {
+            val screenPreviewClickView: ScreenPreviewClickView =
+                view.requireViewById(com.android.wallpaper.R.id.screen_preview_click_view)
             val clockColorAndSizeButtonStub: ViewStub =
-                view.requireViewById(R.id.clock_color_and_size_button)
+                view.requireViewById(com.android.wallpaper.R.id.clock_color_and_size_button)
             clockColorAndSizeButtonStub.layoutResource = R.layout.clock_color_and_size_button
             clockColorAndSizeButton = clockColorAndSizeButtonStub.inflate() as View
             clockColorAndSizeButton?.setOnClickListener {
@@ -115,14 +127,17 @@ class PreviewWithClockCarouselSectionController(
                 val padding =
                     context
                         .getResources()
-                        .getDimensionPixelSize(R.dimen.screen_preview_section_vertical_space)
+                        .getDimensionPixelSize(
+                            com.android.wallpaper.R.dimen.screen_preview_section_vertical_space
+                        )
                 rect.top -= padding
                 rect.bottom += padding
                 val touchDelegate = TouchDelegate(rect, clockColorAndSizeButton)
                 view.setTouchDelegate(touchDelegate)
             }
 
-            val carouselViewStub: ViewStub = view.requireViewById(R.id.clock_carousel_view_stub)
+            val carouselViewStub: ViewStub =
+                view.requireViewById(com.android.wallpaper.R.id.clock_carousel_view_stub)
             carouselViewStub.layoutResource = R.layout.clock_carousel_view
             val carouselView = carouselViewStub.inflate() as ClockCarouselView
 
@@ -143,12 +158,6 @@ class PreviewWithClockCarouselSectionController(
                 guidelineEnd.layoutParams = layoutParams
             }
 
-            // TODO (b/270716937) We should handle the single clock case in the clock carousel
-            // itself
-            val singleClockViewStub: ViewStub = view.requireViewById(R.id.single_clock_view_stub)
-            singleClockViewStub.layoutResource = R.layout.single_clock_view
-            val singleClockView = singleClockViewStub.inflate() as ViewGroup
-
             /**
              * Only bind after [Carousel.onAttachedToWindow]. This is to avoid the race condition
              * that the flow emits before attached to window where [Carousel.mMotionLayout] is still
@@ -158,12 +167,13 @@ class PreviewWithClockCarouselSectionController(
             var bindJob: Job? = null
             onAttachStateChangeListener =
                 object : OnAttachStateChangeListener {
-                    override fun onViewAttachedToWindow(view: View?) {
+                    override fun onViewAttachedToWindow(view: View) {
                         bindJob =
                             lifecycleOwner.lifecycleScope.launch {
                                 ClockCarouselViewBinder.bind(
+                                    context = context,
                                     carouselView = carouselView,
-                                    singleClockView = singleClockView,
+                                    screenPreviewClickView = screenPreviewClickView,
                                     viewModel = viewModel,
                                     clockViewFactory = clockViewFactory,
                                     lifecycleOwner = lifecycleOwner,
@@ -177,7 +187,7 @@ class PreviewWithClockCarouselSectionController(
                             }
                     }
 
-                    override fun onViewDetachedFromWindow(view: View?) {
+                    override fun onViewDetachedFromWindow(view: View) {
                         bindJob?.cancel()
                     }
                 }

@@ -15,11 +15,18 @@
  */
 package com.android.customization.picker.clock.ui.binder
 
+import android.content.Context
 import android.content.res.Configuration
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.TextAppearanceSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.RadioGroup.OnCheckedChangeListener
 import android.widget.SeekBar
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.isInvisible
@@ -33,13 +40,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.ui.adapter.ClockSettingsTabAdapter
+import com.android.customization.picker.clock.ui.view.ClockCarouselView
 import com.android.customization.picker.clock.ui.view.ClockHostView
-import com.android.customization.picker.clock.ui.view.ClockSizeRadioButtonGroup
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
 import com.android.customization.picker.color.ui.binder.ColorOptionIconBinder
 import com.android.customization.picker.common.ui.view.ItemSpacing
-import com.android.wallpaper.R
+import com.android.themepicker.R
 import com.android.wallpaper.picker.option.ui.binder.OptionItemBinder
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapNotNull
@@ -82,14 +89,27 @@ object ClockSettingsBinder {
             }
         )
 
-        val sizeOptions =
-            view.requireViewById<ClockSizeRadioButtonGroup>(R.id.clock_size_radio_button_group)
-        sizeOptions.onRadioButtonClickListener =
-            object : ClockSizeRadioButtonGroup.OnRadioButtonClickListener {
-                override fun onClick(size: ClockSize) {
-                    viewModel.setClockSize(size)
-                }
+        val onCheckedChangeListener = OnCheckedChangeListener { _, id ->
+            when (id) {
+                R.id.radio_dynamic -> viewModel.setClockSize(ClockSize.DYNAMIC)
+                R.id.radio_small -> viewModel.setClockSize(ClockSize.SMALL)
             }
+        }
+        val clockSizeRadioGroup =
+            view.requireViewById<RadioGroup>(R.id.clock_size_radio_button_group)
+        clockSizeRadioGroup.setOnCheckedChangeListener(onCheckedChangeListener)
+        view.requireViewById<RadioButton>(R.id.radio_dynamic).text =
+            getRadioText(
+                view.context.applicationContext,
+                view.resources.getString(R.string.clock_size_dynamic),
+                view.resources.getString(R.string.clock_size_dynamic_description)
+            )
+        view.requireViewById<RadioButton>(R.id.radio_small).text =
+            getRadioText(
+                view.context.applicationContext,
+                view.resources.getString(R.string.clock_size_small),
+                view.resources.getString(R.string.clock_size_small_description)
+            )
 
         val colorOptionContainer = view.requireViewById<View>(R.id.color_picker_container)
         lifecycleOwner.lifecycleScope.launch {
@@ -109,11 +129,11 @@ object ClockSettingsBinder {
                         when (tab) {
                             ClockSettingsViewModel.Tab.COLOR -> {
                                 colorOptionContainer.isVisible = true
-                                sizeOptions.isInvisible = true
+                                clockSizeRadioGroup.isInvisible = true
                             }
                             ClockSettingsViewModel.Tab.SIZE -> {
                                 colorOptionContainer.isInvisible = true
-                                sizeOptions.isVisible = true
+                                clockSizeRadioGroup.isVisible = true
                             }
                         }
                     }
@@ -121,6 +141,7 @@ object ClockSettingsBinder {
 
                 launch {
                     viewModel.colorOptions.collect { colorOptions ->
+                        colorOptionContainerListView.removeAllViews()
                         colorOptions.forEachIndexed { index, colorOption ->
                             colorOption.payload?.let { payload ->
                                 val item =
@@ -188,18 +209,30 @@ object ClockSettingsBinder {
                             clockHostView.addView(clockView)
                             when (size) {
                                 ClockSize.DYNAMIC -> {
-                                    sizeOptions.radioButtonDynamic.isChecked = true
-                                    sizeOptions.radioButtonSmall.isChecked = false
+                                    // When clock size data flow emits clock size signal, we want
+                                    // to update the view without triggering on checked change,
+                                    // which is supposed to be triggered by user interaction only.
+                                    clockSizeRadioGroup.setOnCheckedChangeListener(null)
+                                    clockSizeRadioGroup.check(R.id.radio_dynamic)
+                                    clockSizeRadioGroup.setOnCheckedChangeListener(
+                                        onCheckedChangeListener
+                                    )
                                     clockHostView.doOnPreDraw {
                                         it.pivotX = it.width / 2F
                                         it.pivotY = it.height / 2F
                                     }
                                 }
                                 ClockSize.SMALL -> {
-                                    sizeOptions.radioButtonDynamic.isChecked = false
-                                    sizeOptions.radioButtonSmall.isChecked = true
+                                    // When clock size data flow emits clock size signal, we want
+                                    // to update the view without triggering on checked change,
+                                    // which is supposed to be triggered by user interaction only.
+                                    clockSizeRadioGroup.setOnCheckedChangeListener(null)
+                                    clockSizeRadioGroup.check(R.id.radio_small)
+                                    clockSizeRadioGroup.setOnCheckedChangeListener(
+                                        onCheckedChangeListener
+                                    )
                                     clockHostView.doOnPreDraw {
-                                        it.pivotX = 0F
+                                        it.pivotX = ClockCarouselView.getCenteredHostViewPivotX(it)
                                         it.pivotY = 0F
                                     }
                                 }
@@ -236,5 +269,26 @@ object ClockSettingsBinder {
                 }
             }
         )
+    }
+
+    private fun getRadioText(
+        context: Context,
+        title: String,
+        description: String
+    ): SpannableString {
+        val text = SpannableString(title + "\n" + description)
+        text.setSpan(
+            TextAppearanceSpan(context, R.style.SectionTitleTextStyle),
+            0,
+            title.length,
+            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        text.setSpan(
+            TextAppearanceSpan(context, R.style.SectionSubtitleTextStyle),
+            title.length + 1,
+            title.length + 1 + description.length,
+            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        return text
     }
 }
