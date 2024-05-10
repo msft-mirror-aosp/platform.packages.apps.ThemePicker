@@ -19,15 +19,21 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.SurfaceView;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 
 import com.android.customization.model.ResourceConstants;
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.util.PreviewUtils;
 
 import java.util.ArrayList;
@@ -52,11 +58,14 @@ public class LauncherGridOptionsProvider {
 
     private final Context mContext;
     private final PreviewUtils mPreviewUtils;
+    private final boolean mIsGridApplyButtonEnabled;
     private List<GridOption> mOptions;
+    private OptionChangeLiveData mLiveData;
 
     public LauncherGridOptionsProvider(Context context, String authorityMetadataKey) {
         mPreviewUtils = new PreviewUtils(context, authorityMetadataKey);
         mContext = context;
+        mIsGridApplyButtonEnabled = BaseFlags.get().isGridApplyButtonEnabled(context);
     }
 
     boolean areGridsAvailable() {
@@ -111,10 +120,71 @@ public class LauncherGridOptionsProvider {
         mPreviewUtils.renderPreview(bundle, callback);
     }
 
+    void updateView() {
+        mLiveData.postValue(new Object());
+    }
+
     int applyGrid(String name) {
         ContentValues values = new ContentValues();
         values.put("name", name);
+        values.put("enable_apply_button", mIsGridApplyButtonEnabled);
         return mContext.getContentResolver().update(mPreviewUtils.getUri(DEFAULT_GRID), values,
                 null, null);
+    }
+
+    /**
+     * Returns an observable that receives a new value each time that the grid options are changed.
+     * Do not call if {@link #areGridsAvailable()} returns false
+     */
+    public LiveData<Object> getOptionChangeObservable(
+            @Nullable Handler handler) {
+        if (mLiveData == null) {
+            mLiveData = new OptionChangeLiveData(
+                    mContext, mPreviewUtils.getUri(DEFAULT_GRID), handler);
+        }
+
+        return mLiveData;
+    }
+
+    private static class OptionChangeLiveData extends MutableLiveData<Object> {
+
+        private final ContentResolver mContentResolver;
+        private final Uri mUri;
+        private final ContentObserver mContentObserver;
+
+        OptionChangeLiveData(
+                Context context,
+                Uri uri,
+                @Nullable Handler handler) {
+            mContentResolver = context.getContentResolver();
+            mUri = uri;
+            mContentObserver = new ContentObserver(handler) {
+                @Override
+                public void onChange(boolean selfChange) {
+                    // If grid apply button is enabled, user has previewed the grid before applying
+                    // the grid change. Thus there is no need to preview again (which will cause a
+                    // blank preview as launcher's is loader thread is busy reloading workspace)
+                    // after applying grid change. Thus we should ignore ContentObserver#onChange
+                    // from launcher
+                    if (BaseFlags.get().isGridApplyButtonEnabled(context.getApplicationContext())) {
+                        return;
+                    }
+                    postValue(new Object());
+                }
+            };
+        }
+
+        @Override
+        protected void onActive() {
+            mContentResolver.registerContentObserver(
+                    mUri,
+                    /* notifyForDescendants= */ true,
+                    mContentObserver);
+        }
+
+        @Override
+        protected void onInactive() {
+            mContentResolver.unregisterContentObserver(mContentObserver);
+        }
     }
 }

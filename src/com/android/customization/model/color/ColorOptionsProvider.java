@@ -73,5 +73,6 @@ public interface ColorOptionsProvider {
      */
     void fetch(OptionsFetchedListener<ColorOption> callback, boolean reload,
             @Nullable WallpaperColors homeWallpaperColors,
-            @Nullable WallpaperColors lockWallpaperColors);
+            @Nullable WallpaperColors lockWallpaperColors
+    );
 }

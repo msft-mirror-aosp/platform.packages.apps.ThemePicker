@@ -19,6 +19,7 @@ import static com.android.customization.model.ResourceConstants.OVERLAY_CATEGORY
 import static com.android.customization.model.ResourceConstants.OVERLAY_CATEGORY_SYSTEM_PALETTE;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -27,6 +28,7 @@ import androidx.annotation.VisibleForTesting;
 import com.android.customization.model.CustomizationManager;
 import com.android.customization.model.CustomizationOption;
 import com.android.customization.model.color.ColorOptionsProvider.ColorSource;
+import com.android.customization.module.logging.ThemesUserEventLogger;
 import com.android.systemui.monet.Style;
 import com.android.wallpaper.R;
 
@@ -52,8 +54,6 @@ public abstract class ColorOption implements CustomizationOption<ColorOption> {
     static final String TIMESTAMP_FIELD = "_applied_timestamp";
 
     protected final Map<String, String> mPackagesByCategory;
-    protected final int[] mPreviewColorIds = {R.id.color_preview_0, R.id.color_preview_1,
-            R.id.color_preview_2, R.id.color_preview_3};
     private final String mTitle;
     private final boolean mIsDefault;
     private final Style mStyle;
@@ -86,6 +86,9 @@ public abstract class ColorOption implements CustomizationOption<ColorOption> {
 
         if (mIsDefault) {
             String serializedOverlays = colorManager.getStoredOverlays();
+            // a default color option is active if the manager has no stored overlays or current
+            // overlays, or the stored overlay does not contain either category system palette or
+            // category color
             return (TextUtils.isEmpty(serializedOverlays) || EMPTY_JSON.equals(serializedOverlays)
                     || colorManager.getCurrentOverlays().isEmpty() || !(serializedOverlays.contains(
                     OVERLAY_CATEGORY_SYSTEM_PALETTE) || serializedOverlays.contains(
@@ -100,6 +103,22 @@ public abstract class ColorOption implements CustomizationOption<ColorOption> {
     }
 
     /**
+     * Gets the seed color from the overlay packages for logging.
+     *
+     * @return an int representing the seed color, or NULL_SEED_COLOR
+     */
+    public int getSeedColorForLogging() {
+        String seedColor = mPackagesByCategory.get(OVERLAY_CATEGORY_SYSTEM_PALETTE);
+        if (seedColor == null || seedColor.isEmpty()) {
+            return ThemesUserEventLogger.NULL_SEED_COLOR;
+        }
+        if (!seedColor.startsWith("#")) {
+            seedColor = "#" + seedColor;
+        }
+        return Color.parseColor(seedColor);
+    }
+
+    /**
      * This is similar to #equals() but it only compares this theme's packages with the other, that
      * is, it will return true if applying this theme has the same effect of applying the given one.
      */
@@ -107,9 +126,15 @@ public abstract class ColorOption implements CustomizationOption<ColorOption> {
         if (other == null) {
             return false;
         }
-        if (mIsDefault) {
-            return other.isDefault() || TextUtils.isEmpty(other.getSerializedPackages())
-                    || EMPTY_JSON.equals(other.getSerializedPackages());
+        if (mStyle != other.getStyle()) {
+            return false;
+        }
+        String thisSerializedPackages = getSerializedPackages();
+        if (mIsDefault || TextUtils.isEmpty(thisSerializedPackages)
+                || EMPTY_JSON.equals(thisSerializedPackages)) {
+            String otherSerializedPackages = other.getSerializedPackages();
+            return other.isDefault() || TextUtils.isEmpty(otherSerializedPackages)
+                    || EMPTY_JSON.equals(otherSerializedPackages);
         }
         // Map#equals ensures keys and values are compared.
         return mPackagesByCategory.equals(other.mPackagesByCategory);
@@ -182,7 +207,8 @@ public abstract class ColorOption implements CustomizationOption<ColorOption> {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    protected CharSequence getContentDescription(Context context) {
+    /** */
+    public CharSequence getContentDescription(Context context) {
         if (mContentDescription == null) {
             CharSequence defaultName = context.getString(R.string.default_theme_title);
             if (isDefault()) {
@@ -201,11 +227,22 @@ public abstract class ColorOption implements CustomizationOption<ColorOption> {
     public abstract String getSource();
 
     /**
+     * @return the source of this color option for logging
+     */
+    @ThemesUserEventLogger.ColorSource
+    public abstract int getSourceForLogging();
+
+    /**
      * @return the style of this color option
      */
     public Style getStyle() {
         return mStyle;
     }
+
+    /**
+     * @return the style of this color option for logging
+     */
+    public abstract int getStyleForLogging();
 
     /**
      * @return the index of this color option

@@ -39,6 +39,7 @@ import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
 
+import com.android.customization.module.logging.ThemesUserEventLogger;
 import com.android.customization.picker.mode.DarkModeSectionView;
 import com.android.wallpaper.R;
 import com.android.wallpaper.model.CustomizationSectionController;
@@ -59,12 +60,20 @@ public class DarkModeSectionController implements
 
     private Context mContext;
     private DarkModeSectionView mDarkModeSectionView;
+    private final DarkModeSnapshotRestorer mSnapshotRestorer;
+    private final ThemesUserEventLogger mThemesUserEventLogger;
 
-    public DarkModeSectionController(Context context, Lifecycle lifecycle) {
+    public DarkModeSectionController(
+            Context context,
+            Lifecycle lifecycle,
+            DarkModeSnapshotRestorer snapshotRestorer,
+            ThemesUserEventLogger themesUserEventLogger) {
         mContext = context;
         mLifecycle = lifecycle;
         mPowerManager = context.getSystemService(PowerManager.class);
         mLifecycle.addObserver(this);
+        mSnapshotRestorer = snapshotRestorer;
+        mThemesUserEventLogger = themesUserEventLogger;
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
@@ -132,6 +141,8 @@ public class DarkModeSectionController implements
                     mDarkModeSectionView.announceForAccessibility(
                             context.getString(R.string.mode_changed));
                     uiModeManager.setNightModeActivated(viewActivated);
+                    mThemesUserEventLogger.logDarkThemeApplied(viewActivated);
+                    mSnapshotRestorer.store(viewActivated);
                 },
                 /* delayMillis= */ shortDelay);
     }

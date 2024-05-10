@@ -21,11 +21,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
+import androidx.lifecycle.LiveData;
 
 import com.android.customization.model.CustomizationManager;
 import com.android.customization.module.CustomizationInjector;
-import com.android.customization.module.ThemesUserEventLogger;
+import com.android.customization.module.logging.ThemesUserEventLogger;
 import com.android.wallpaper.R;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.util.PreviewUtils;
@@ -47,6 +49,7 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
 
     private final LauncherGridOptionsProvider mProvider;
     private final ThemesUserEventLogger mEventLogger;
+    private int mGridOptionSize = -1;
 
     /** Returns the {@link GridOptionsManager} instance. */
     public static GridOptionsManager getInstance(Context context) {
@@ -71,16 +74,17 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
 
     @Override
     public boolean isAvailable() {
-        int gridOptionSize = 0;
-        try {
-            gridOptionSize = sExecutorService.submit(() -> {
-                List<GridOption> gridOptions = mProvider.fetch(/* reload= */true);
-                return gridOptions == null ? 0 : gridOptions.size();
-            }).get();
-        } catch (InterruptedException | ExecutionException e) {
-            Log.w(TAG, "could not get gridOptionSize", e);
+        if (mGridOptionSize < 0) {
+            try {
+                mGridOptionSize = sExecutorService.submit(() -> {
+                    List<GridOption> gridOptions = mProvider.fetch(/* reload= */true);
+                    return gridOptions == null ? 0 : gridOptions.size();
+                }).get();
+            } catch (InterruptedException | ExecutionException e) {
+                Log.w(TAG, "could not get gridOptionSize", e);
+            }
         }
-        return gridOptionSize > 1 && mProvider.areGridsAvailable();
+        return mGridOptionSize > 1 && mProvider.areGridsAvailable();
     }
 
     @Override
@@ -92,6 +96,11 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
         } else {
             callback.onError(null);
         }
+    }
+
+    @Override
+    public void preview(GridOption option) {
+        mProvider.updateView();
     }
 
     @Override
@@ -108,6 +117,13 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
                 }
             });
         });
+    }
+
+    /**
+     * Returns an observable that receives a new value each time that the grid options are changed.
+     */
+    public LiveData<Object> getOptionChangeObservable(@Nullable Handler handler) {
+        return mProvider.getOptionChangeObservable(handler);
     }
 
     /** Call through content provider API to render preview */
