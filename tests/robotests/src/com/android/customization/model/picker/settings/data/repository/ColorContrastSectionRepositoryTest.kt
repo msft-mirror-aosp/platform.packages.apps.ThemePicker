@@ -16,40 +16,39 @@
 
 package com.android.customization.model.picker.settings.data.repository
 
-import android.app.UiModeManager
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.filters.SmallTest
 import com.android.customization.picker.settings.data.repository.ColorContrastSectionRepository
+import com.android.wallpaper.testing.FakeUiModeManager
 import com.google.common.truth.Truth.assertThat
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestCoroutineDispatcher
-import kotlinx.coroutines.test.runBlockingTest
-import org.junit.After
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
-import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
 import org.robolectric.RobolectricTestRunner
 
+@HiltAndroidTest
 @SmallTest
 @RunWith(RobolectricTestRunner::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class ColorContrastSectionRepositoryTest {
-    private lateinit var underTest: ColorContrastSectionRepository
+    @get:Rule var hiltRule = HiltAndroidRule(this)
 
-    private lateinit var context: Context
-    private lateinit var bgDispatcher: TestCoroutineDispatcher
+    @Inject lateinit var uiModeManager: FakeUiModeManager
+    @Inject lateinit var underTest: ColorContrastSectionRepository
+    @Inject lateinit var testScope: TestScope
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext<Context>()
-        bgDispatcher = TestCoroutineDispatcher()
-        underTest = ColorContrastSectionRepository(context, bgDispatcher)
+        hiltRule.inject()
     }
 
     @Test
@@ -59,38 +58,22 @@ class ColorContrastSectionRepositoryTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun contrastFlowEmitsValues() = runBlockingTest {
-        val mockUiModeManager = mock(UiModeManager::class.java)
-        val contrastValues = listOf(0.5f, 0.7f, 0.8f)
+    fun contrastFlowEmitsValues() =
+        testScope.runTest {
+            val nextContrastValues = listOf(0.5f, 0.7f, 0.8f)
+            // Set up a flow to collect all contrast values
+            val flowCollector = mutableListOf<Float>()
+            // Start collecting values from the flow, using an unconfined dispatcher to start
+            // collecting from the flow right away (rather than explicitly calling `runCurrent`)
+            // See https://developer.android.com/kotlin/flow/test#continuous-collection
+            backgroundScope.launch(UnconfinedTestDispatcher()) {
+                underTest.contrast.toList(flowCollector)
+            }
 
-        // Stub the initial contrast value before the flow starts collecting
-        `when`(mockUiModeManager.contrast).thenReturn(contrastValues[0])
+            nextContrastValues.forEach { uiModeManager.setContrast(it) }
 
-        // Assign the mockUiModeManager to the repository's uiModeManager
-        underTest.uiModeManager = mockUiModeManager
-
-        // Create a collector for the flow
-        val flowCollector = mutableListOf<Float>()
-
-        // Start collecting values from the flow
-        val job = launch { underTest.contrast.collect { flowCollector.add(it) } }
-
-        // Capture the ContrastChangeListener
-        val listenerCaptor = argumentCaptor<UiModeManager.ContrastChangeListener>()
-        verify(mockUiModeManager).addContrastChangeListener(any(), listenerCaptor.capture())
-
-        // Simulate contrast changes after the initial value has been emitted
-        contrastValues.drop(1).forEach { newValue ->
-            listenerCaptor.firstValue.onContrastChanged(newValue)
+            // Ignore the first contrast value from constructing the repository
+            val collectedValues = flowCollector.drop(1)
+            assertThat(collectedValues).containsExactlyElementsIn(nextContrastValues)
         }
-
-        assertThat(flowCollector).containsExactlyElementsIn(contrastValues)
-
-        job.cancel()
-    }
-
-    @After
-    fun tearDown() {
-        bgDispatcher.cleanupTestCoroutines()
-    }
 }

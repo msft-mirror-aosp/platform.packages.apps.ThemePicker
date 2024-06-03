@@ -16,49 +16,51 @@
 
 package com.android.customization.model.picker.settings.ui.viewmodel
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
-import com.android.customization.picker.settings.domain.interactor.ColorContrastSectionInteractor
 import com.android.customization.picker.settings.ui.viewmodel.ColorContrastSectionDataViewModel
 import com.android.customization.picker.settings.ui.viewmodel.ColorContrastSectionViewModel
 import com.android.themepicker.R
 import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
+import com.android.wallpaper.testing.FakeUiModeManager
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.TestCoroutineDispatcher
-import kotlinx.coroutines.test.runBlockingTest
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.mock
 import org.robolectric.RobolectricTestRunner
 
+@HiltAndroidTest
 @RunWith(RobolectricTestRunner::class)
 class ColorContrastSectionViewModelTest {
-    private lateinit var bgDispatcher: TestCoroutineDispatcher
-    private lateinit var context: Context
-    private lateinit var viewModel: ColorContrastSectionViewModel
-    private lateinit var interactor: ColorContrastSectionInteractor
+    @get:Rule var hiltRule = HiltAndroidRule(this)
 
+    private lateinit var viewModel: ColorContrastSectionViewModel
+
+    @Inject lateinit var testDispatcher: TestDispatcher
+    @Inject lateinit var uiModeManager: FakeUiModeManager
+    @Inject lateinit var viewModelFactory: ColorContrastSectionViewModel.Factory
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext<Context>()
-        bgDispatcher = TestCoroutineDispatcher()
+        hiltRule.inject()
+        Dispatchers.setMain(testDispatcher)
+        viewModel = viewModelFactory.create(ColorContrastSectionViewModel::class.java)
     }
 
     @Test
-    fun summaryEmitsCorrectDataValueForStandard() = runBlockingTest {
-        interactor = mock {
-            on { contrast } doReturn
-                flowOf(ColorContrastSectionViewModel.ContrastValue.STANDARD.value)
-        }
-        val factory = ColorContrastSectionViewModel.Factory(interactor)
-        viewModel = factory.create(ColorContrastSectionViewModel::class.java)
-
+    fun summaryEmitsCorrectDataValueForStandard() = runTest {
+        uiModeManager.setContrast(ColorContrastSectionViewModel.ContrastValue.STANDARD.value)
         val expected =
             ColorContrastSectionDataViewModel(
                 Text.Resource(R.string.color_contrast_default_title),
@@ -66,18 +68,13 @@ class ColorContrastSectionViewModelTest {
             )
 
         val result = viewModel.summary.first()
+
         assertEquals(expected, result)
     }
 
     @Test
-    fun summaryEmitsCorrectDataValueForMedium() = runBlockingTest {
-        interactor = mock {
-            on { contrast } doReturn
-                flowOf(ColorContrastSectionViewModel.ContrastValue.MEDIUM.value)
-        }
-        val factory = ColorContrastSectionViewModel.Factory(interactor)
-        viewModel = factory.create(ColorContrastSectionViewModel::class.java)
-
+    fun summaryEmitsCorrectDataValueForMedium() = runTest {
+        uiModeManager.setContrast(ColorContrastSectionViewModel.ContrastValue.MEDIUM.value)
         val expected =
             ColorContrastSectionDataViewModel(
                 Text.Resource(R.string.color_contrast_medium_title),
@@ -85,17 +82,13 @@ class ColorContrastSectionViewModelTest {
             )
 
         val result = viewModel.summary.first()
+
         assertEquals(expected, result)
     }
 
     @Test
-    fun summaryEmitsCorrectDataValueForHigh() = runBlockingTest {
-        interactor = mock {
-            on { contrast } doReturn flowOf(ColorContrastSectionViewModel.ContrastValue.HIGH.value)
-        }
-        val factory = ColorContrastSectionViewModel.Factory(interactor)
-        viewModel = factory.create(ColorContrastSectionViewModel::class.java)
-
+    fun summaryEmitsCorrectDataValueForHigh() = runTest {
+        uiModeManager.setContrast(ColorContrastSectionViewModel.ContrastValue.HIGH.value)
         val expected =
             ColorContrastSectionDataViewModel(
                 Text.Resource(R.string.color_contrast_high_title),
@@ -103,14 +96,14 @@ class ColorContrastSectionViewModelTest {
             )
 
         val result = viewModel.summary.first()
+
         assertEquals(expected, result)
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun summaryThrowsIllegalArgumentExceptionForInvalidValue() = runBlockingTest {
-        interactor = mock { on { contrast } doReturn flowOf(999f) }
-        val factory = ColorContrastSectionViewModel.Factory(interactor)
-        viewModel = factory.create(ColorContrastSectionViewModel::class.java)
+    fun summaryThrowsIllegalArgumentExceptionForInvalidValue() = runTest {
+        uiModeManager.setContrast(999f)
+
         viewModel.summary.collect() // This should throw an IllegalArgumentException
     }
 }
