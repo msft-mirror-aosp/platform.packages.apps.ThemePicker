@@ -21,7 +21,7 @@ import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
-import com.android.wallpaper.R
+import com.android.themepicker.R
 
 class CarouselAccessibilityDelegate(
     private val context: Context,
@@ -37,6 +37,11 @@ class CarouselAccessibilityDelegate(
     override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(host, info)
         info.isScrollable = true
+
+        // for some reason this action is needed for the subsequent two action to appear in the
+        // accessibility action menu (this action doesn't show)
+        info.addAction(AccessibilityNodeInfo.ACTION_CLICK) // Standard click action
+
         info.addAction(
             AccessibilityNodeInfo.AccessibilityAction(
                 ACTION_SCROLL_FORWARD,

@@ -20,7 +20,11 @@ package com.android.customization.picker.quickaffordance.ui.binder
 import android.app.Dialog
 import android.content.Context
 import android.view.View
+import android.view.ViewGroup
+import android.view.accessibility.AccessibilityEvent
 import android.widget.ImageView
+import androidx.core.view.AccessibilityDelegateCompat
+import androidx.core.view.ViewCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -30,13 +34,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.android.customization.picker.common.ui.view.ItemSpacing
 import com.android.customization.picker.quickaffordance.ui.adapter.SlotTabAdapter
 import com.android.customization.picker.quickaffordance.ui.viewmodel.KeyguardQuickAffordancePickerViewModel
-import com.android.wallpaper.R
+import com.android.themepicker.R
 import com.android.wallpaper.picker.common.dialog.ui.viewbinder.DialogViewBinder
 import com.android.wallpaper.picker.common.dialog.ui.viewmodel.DialogViewModel
 import com.android.wallpaper.picker.common.icon.ui.viewbinder.IconViewBinder
 import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.option.ui.adapter.OptionItemAdapter
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collectIndexed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -61,6 +66,26 @@ object KeyguardQuickAffordancePickerBinder {
         slotTabView.layoutManager =
             LinearLayoutManager(view.context, RecyclerView.HORIZONTAL, false)
         slotTabView.addItemDecoration(ItemSpacing(ItemSpacing.TAB_ITEM_SPACING_DP))
+
+        // Setting a custom accessibility delegate so that the default content descriptions
+        // for items in a list aren't announced (for left & right shortcuts). We populate
+        // the content description for these shortcuts later on with the right (expected)
+        // values.
+        val slotTabViewDelegate: AccessibilityDelegateCompat =
+            object : AccessibilityDelegateCompat() {
+                override fun onRequestSendAccessibilityEvent(
+                    host: ViewGroup,
+                    child: View,
+                    event: AccessibilityEvent
+                ): Boolean {
+                    if (event.eventType != AccessibilityEvent.TYPE_VIEW_FOCUSED) {
+                        child.contentDescription = null
+                    }
+                    return super.onRequestSendAccessibilityEvent(host, child, event)
+                }
+            }
+
+        ViewCompat.setAccessibilityDelegate(slotTabView, slotTabViewDelegate)
         val affordancesAdapter =
             OptionItemAdapter(
                 layoutResourceId = R.layout.keyguard_quick_affordance,
@@ -99,13 +124,18 @@ object KeyguardQuickAffordancePickerBinder {
                                 selectedFlags.indexOfFirst { it }
                             }
                         }
-                        .collect { selectedPosition ->
+                        .collectIndexed { index, selectedPosition ->
                             // Scroll the view to show the first selected affordance.
                             if (selectedPosition != -1) {
                                 // We use "post" because we need to give the adapter item a pass to
                                 // update the view.
                                 affordancesView.post {
-                                    affordancesView.smoothScrollToPosition(selectedPosition)
+                                    if (index == 0) {
+                                        // don't animate on initial collection
+                                        affordancesView.scrollToPosition(selectedPosition)
+                                    } else {
+                                        affordancesView.smoothScrollToPosition(selectedPosition)
+                                    }
                                 }
                             }
                         }

@@ -16,7 +16,6 @@
 package com.android.customization.model.grid;
 
 import android.content.Context;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -27,10 +26,9 @@ import androidx.lifecycle.LiveData;
 
 import com.android.customization.model.CustomizationManager;
 import com.android.customization.module.CustomizationInjector;
-import com.android.customization.module.ThemesUserEventLogger;
+import com.android.customization.module.logging.ThemesUserEventLogger;
 import com.android.wallpaper.R;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.util.PreviewUtils;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -56,8 +54,8 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
         if (sGridOptionsManager == null) {
             Context appContext = context.getApplicationContext();
             CustomizationInjector injector = (CustomizationInjector) InjectorProvider.getInjector();
-            ThemesUserEventLogger eventLogger = (ThemesUserEventLogger) injector.getUserEventLogger(
-                    appContext);
+            ThemesUserEventLogger eventLogger =
+                    (ThemesUserEventLogger) injector.getUserEventLogger();
             sGridOptionsManager = new GridOptionsManager(
                     new LauncherGridOptionsProvider(appContext,
                             appContext.getString(R.string.grid_control_metadata_name)),
@@ -99,6 +97,11 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
     }
 
     @Override
+    public void preview(GridOption option) {
+        mProvider.updateView();
+    }
+
+    @Override
     public void fetchOptions(OptionsFetchedListener<GridOption> callback, boolean reload) {
         sExecutorService.submit(() -> {
             List<GridOption> gridOptions = mProvider.fetch(reload);
@@ -119,11 +122,5 @@ public class GridOptionsManager implements CustomizationManager<GridOption> {
      */
     public LiveData<Object> getOptionChangeObservable(@Nullable Handler handler) {
         return mProvider.getOptionChangeObservable(handler);
-    }
-
-    /** Call through content provider API to render preview */
-    public void renderPreview(Bundle bundle, String gridName,
-            PreviewUtils.WorkspacePreviewCallback callback) {
-        mProvider.renderPreview(gridName, bundle, callback);
     }
 }

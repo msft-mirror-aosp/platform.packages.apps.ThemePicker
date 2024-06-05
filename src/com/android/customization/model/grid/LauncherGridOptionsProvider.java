@@ -22,9 +22,7 @@ import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Handler;
-import android.view.SurfaceView;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
@@ -32,7 +30,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.android.customization.model.ResourceConstants;
-import com.android.wallpaper.R;
+import com.android.themepicker.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.util.PreviewUtils;
 
 import java.util.ArrayList;
@@ -57,12 +56,14 @@ public class LauncherGridOptionsProvider {
 
     private final Context mContext;
     private final PreviewUtils mPreviewUtils;
+    private final boolean mIsGridApplyButtonEnabled;
     private List<GridOption> mOptions;
     private OptionChangeLiveData mLiveData;
 
     public LauncherGridOptionsProvider(Context context, String authorityMetadataKey) {
         mPreviewUtils = new PreviewUtils(context, authorityMetadataKey);
         mContext = context;
+        mIsGridApplyButtonEnabled = BaseFlags.get().isGridApplyButtonEnabled(context);
     }
 
     boolean areGridsAvailable() {
@@ -104,22 +105,14 @@ public class LauncherGridOptionsProvider {
         return mOptions;
     }
 
-    /**
-     * Request rendering of home screen preview via Launcher to Wallpaper using SurfaceView
-     * @param name      the grid option name
-     * @param bundle    surface view request bundle generated from
-     *    {@link com.android.wallpaper.util.SurfaceViewUtils#createSurfaceViewRequest(SurfaceView)}.
-     * @param callback To receive the result (will be called on the main thread)
-     */
-    void renderPreview(String name, Bundle bundle,
-            PreviewUtils.WorkspacePreviewCallback callback) {
-        bundle.putString("name", name);
-        mPreviewUtils.renderPreview(bundle, callback);
+    void updateView() {
+        mLiveData.postValue(new Object());
     }
 
     int applyGrid(String name) {
         ContentValues values = new ContentValues();
         values.put("name", name);
+        values.put("enable_apply_button", mIsGridApplyButtonEnabled);
         return mContext.getContentResolver().update(mPreviewUtils.getUri(DEFAULT_GRID), values,
                 null, null);
     }
@@ -153,6 +146,14 @@ public class LauncherGridOptionsProvider {
             mContentObserver = new ContentObserver(handler) {
                 @Override
                 public void onChange(boolean selfChange) {
+                    // If grid apply button is enabled, user has previewed the grid before applying
+                    // the grid change. Thus there is no need to preview again (which will cause a
+                    // blank preview as launcher's is loader thread is busy reloading workspace)
+                    // after applying grid change. Thus we should ignore ContentObserver#onChange
+                    // from launcher
+                    if (BaseFlags.get().isGridApplyButtonEnabled(context.getApplicationContext())) {
+                        return;
+                    }
                     postValue(new Object());
                 }
             };

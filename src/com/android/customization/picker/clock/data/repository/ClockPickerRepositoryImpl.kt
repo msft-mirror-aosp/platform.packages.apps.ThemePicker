@@ -21,9 +21,9 @@ import androidx.annotation.ColorInt
 import androidx.annotation.IntRange
 import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
-import com.android.systemui.plugins.ClockMetadata
+import com.android.systemui.plugins.clocks.ClockMetadata
 import com.android.systemui.shared.clocks.ClockRegistry
-import com.android.wallpaper.settings.data.repository.SecureSettingsRepository
+import com.android.systemui.shared.settings.data.repository.SecureSettingsRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -53,7 +54,10 @@ class ClockPickerRepositoryImpl(
         callbackFlow {
                 fun send() {
                     val activeClockId = registry.activeClockId
-                    val allClocks = registry.getClocks().map { it.toModel() }
+                    val allClocks =
+                        registry.getClocks().map {
+                            it.toModel(isSelected = it.clockId == activeClockId)
+                        }
 
                     trySend(allClocks)
                 }
@@ -88,6 +92,7 @@ class ClockPickerRepositoryImpl(
                             .getClocks()
                             .find { clockMetadata -> clockMetadata.clockId == activeClockId }
                             ?.toModel(
+                                isSelected = true,
                                 selectedColorId = metadata?.getSelectedColorId(),
                                 colorTone = metadata?.getColorTone()
                                         ?: ClockMetadataModel.DEFAULT_COLOR_TONE_PROGRESS,
@@ -144,14 +149,15 @@ class ClockPickerRepositoryImpl(
             )
             .map { setting -> setting == 1 }
             .map { isDynamic -> if (isDynamic) ClockSize.DYNAMIC else ClockSize.SMALL }
+            .distinctUntilChanged()
             .shareIn(
                 scope = scope,
-                started = SharingStarted.WhileSubscribed(),
+                started = SharingStarted.Eagerly,
                 replay = 1,
             )
 
     override suspend fun setClockSize(size: ClockSize) {
-        secureSettingsRepository.set(
+        secureSettingsRepository.setInt(
             name = Settings.Secure.LOCKSCREEN_USE_DOUBLE_LINE_CLOCK,
             value = if (size == ClockSize.DYNAMIC) 1 else 0,
         )
@@ -174,13 +180,14 @@ class ClockPickerRepositoryImpl(
 
     /** By default, [ClockMetadataModel] has no color information unless specified. */
     private fun ClockMetadata.toModel(
+        isSelected: Boolean,
         selectedColorId: String? = null,
         @IntRange(from = 0, to = 100) colorTone: Int = 0,
         @ColorInt seedColor: Int? = null,
     ): ClockMetadataModel {
         return ClockMetadataModel(
             clockId = clockId,
-            name = name,
+            isSelected = isSelected,
             selectedColorId = selectedColorId,
             colorToneProgress = colorTone,
             seedColor = seedColor,

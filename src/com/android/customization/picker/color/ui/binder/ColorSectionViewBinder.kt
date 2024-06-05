@@ -29,7 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
-import com.android.wallpaper.R
+import com.android.themepicker.R
 import com.android.wallpaper.picker.common.icon.ui.viewbinder.ContentDescriptionViewBinder
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
 import kotlinx.coroutines.launch
@@ -99,35 +99,29 @@ object ColorSectionViewBinder {
                 LayoutInflater.from(view.context)
                     .inflate(R.layout.color_option_no_background, view, false)
             item.payload?.let {
-                ColorOptionIconBinder.bind(
-                    itemView.requireViewById(R.id.option_tile),
-                    item.payload,
-                    night
-                )
+                ColorOptionIconBinder.bind(itemView.requireViewById(R.id.option_tile), it, night)
                 ContentDescriptionViewBinder.bind(
                     view = itemView.requireViewById(R.id.option_tile),
                     viewModel = item.text,
                 )
             }
-            val optionSelectedView = itemView.findViewById<ImageView>(R.id.option_selected)
+            val optionSelectedView = itemView.requireViewById<ImageView>(R.id.option_selected)
 
             lifecycleOwner.lifecycleScope.launch {
-                lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    launch {
-                        item.isSelected.collect { isSelected ->
-                            optionSelectedView.isVisible = isSelected
-                        }
+                launch {
+                    item.isSelected.collect { isSelected ->
+                        optionSelectedView.isVisible = isSelected
                     }
-                    launch {
-                        item.onClicked.collect { onClicked ->
-                            itemView.setOnClickListener(
-                                if (onClicked != null) {
-                                    View.OnClickListener { onClicked.invoke() }
-                                } else {
-                                    null
-                                }
-                            )
-                        }
+                }
+                launch {
+                    item.onClicked.collect { onClicked ->
+                        itemView.setOnClickListener(
+                            if (onClicked != null) {
+                                View.OnClickListener { onClicked.invoke() }
+                            } else {
+                                null
+                            }
+                        )
                     }
                 }
             }
