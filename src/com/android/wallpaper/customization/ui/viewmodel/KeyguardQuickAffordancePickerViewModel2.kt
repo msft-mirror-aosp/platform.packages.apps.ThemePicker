@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,37 +12,33 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
-package com.android.customization.picker.quickaffordance.ui.viewmodel
+package com.android.wallpaper.customization.ui.viewmodel
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Drawable
-import android.os.Bundle
 import androidx.annotation.DrawableRes
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import com.android.customization.module.logging.ThemesUserEventLogger
 import com.android.customization.picker.quickaffordance.domain.interactor.KeyguardQuickAffordancePickerInteractor
+import com.android.customization.picker.quickaffordance.ui.viewmodel.KeyguardQuickAffordanceSlotViewModel
+import com.android.customization.picker.quickaffordance.ui.viewmodel.KeyguardQuickAffordanceSummaryViewModel
 import com.android.systemui.shared.keyguard.shared.model.KeyguardQuickAffordanceSlots
-import com.android.systemui.shared.quickaffordance.shared.model.KeyguardPreviewConstants
 import com.android.themepicker.R
-import com.android.wallpaper.model.Screen
-import com.android.wallpaper.module.CurrentWallpaperInfoFactory
 import com.android.wallpaper.picker.common.button.ui.viewmodel.ButtonStyle
 import com.android.wallpaper.picker.common.button.ui.viewmodel.ButtonViewModel
 import com.android.wallpaper.picker.common.dialog.ui.viewmodel.DialogViewModel
 import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
-import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
-import com.android.wallpaper.picker.customization.ui.viewmodel.ScreenPreviewViewModel
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
-import com.android.wallpaper.util.PreviewUtils
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.android.scopes.ViewModelScoped
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -54,56 +50,15 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 
-/** Models UI state for a lock screen quick affordance picker experience. */
-@OptIn(ExperimentalCoroutinesApi::class)
-class KeyguardQuickAffordancePickerViewModel
-private constructor(
-    context: Context,
+class KeyguardQuickAffordancePickerViewModel2
+@AssistedInject
+constructor(
+    @ApplicationContext private val applicationContext: Context,
     private val quickAffordanceInteractor: KeyguardQuickAffordancePickerInteractor,
-    private val wallpaperInteractor: WallpaperInteractor,
-    private val wallpaperInfoFactory: CurrentWallpaperInfoFactory,
     private val logger: ThemesUserEventLogger,
-) : ViewModel() {
-
-    @SuppressLint("StaticFieldLeak") private val applicationContext = context.applicationContext
-
-    val preview =
-        ScreenPreviewViewModel(
-            previewUtils =
-                PreviewUtils(
-                    context = applicationContext,
-                    authority =
-                        applicationContext.getString(
-                            com.android.wallpaper.R.string.lock_screen_preview_provider_authority,
-                        ),
-                ),
-            initialExtrasProvider = {
-                Bundle().apply {
-                    putString(
-                        KeyguardPreviewConstants.KEY_INITIALLY_SELECTED_SLOT_ID,
-                        selectedSlotId.value,
-                    )
-                    putBoolean(
-                        KeyguardPreviewConstants.KEY_HIGHLIGHT_QUICK_AFFORDANCES,
-                        true,
-                    )
-                }
-            },
-            wallpaperInfoProvider = { forceReload ->
-                suspendCancellableCoroutine { continuation ->
-                    wallpaperInfoFactory.createCurrentWallpaperInfos(
-                        context,
-                        forceReload,
-                    ) { homeWallpaper, lockWallpaper, _ ->
-                        continuation.resume(lockWallpaper ?: homeWallpaper, null)
-                    }
-                }
-            },
-            wallpaperInteractor = wallpaperInteractor,
-            screen = Screen.LOCK_SCREEN,
-        )
+    @Assisted private val viewModelScope: CoroutineScope,
+) {
 
     /** A locally-selected slot, if the user ever switched from the original one. */
     private val _selectedSlotId = MutableStateFlow<String?>(null)
@@ -306,7 +261,7 @@ private constructor(
                     ?.payload
 
             KeyguardQuickAffordanceSummaryViewModel(
-                description = toDescriptionText(context, slots),
+                description = toDescriptionText(applicationContext, slots),
                 icon1 =
                     icon1
                         ?: if (icon2 == null) {
@@ -484,23 +439,9 @@ private constructor(
         }
     }
 
-    class Factory(
-        private val context: Context,
-        private val quickAffordanceInteractor: KeyguardQuickAffordancePickerInteractor,
-        private val wallpaperInteractor: WallpaperInteractor,
-        private val wallpaperInfoFactory: CurrentWallpaperInfoFactory,
-        private val logger: ThemesUserEventLogger,
-    ) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            @Suppress("UNCHECKED_CAST")
-            return KeyguardQuickAffordancePickerViewModel(
-                context = context,
-                quickAffordanceInteractor = quickAffordanceInteractor,
-                wallpaperInteractor = wallpaperInteractor,
-                wallpaperInfoFactory = wallpaperInfoFactory,
-                logger = logger,
-            )
-                as T
-        }
+    @ViewModelScoped
+    @AssistedFactory
+    interface Factory {
+        fun create(viewModelScope: CoroutineScope): KeyguardQuickAffordancePickerViewModel2
     }
 }
