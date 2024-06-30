@@ -15,6 +15,7 @@
  */
 package com.android.wallpaper
 
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.android.customization.model.color.ColorCustomizationManager
 import com.android.customization.model.theme.OverlayManagerCompat
@@ -24,6 +25,8 @@ import com.android.customization.module.logging.TestThemesUserEventLogger
 import com.android.customization.module.logging.ThemesUserEventLogger
 import com.android.customization.testing.TestCustomizationInjector
 import com.android.customization.testing.TestDefaultCustomizationPreferences
+import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
+import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.effects.FakeEffectsController
 import com.android.wallpaper.module.Injector
@@ -35,21 +38,22 @@ import com.android.wallpaper.modules.ThemePickerAppModule
 import com.android.wallpaper.network.Requester
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
+import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.EffectsModule
-import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.testing.FakeDefaultRequester
-import com.android.wallpaper.testing.FakeLiveWallpaperDownloader
 import com.android.wallpaper.testing.TestPartnerProvider
 import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.testing.TestInstallIn
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 
 @Module
 @TestInstallIn(
@@ -93,12 +97,6 @@ abstract class ThemePickerTestModule {
 
     @Binds
     @Singleton
-    abstract fun bindLiveWallpaperDownloader(
-        impl: FakeLiveWallpaperDownloader
-    ): LiveWallpaperDownloader
-
-    @Binds
-    @Singleton
     abstract fun providePartnerProvider(impl: TestPartnerProvider): PartnerProvider
 
     @Binds
@@ -125,6 +123,15 @@ abstract class ThemePickerTestModule {
                 ApplicationProvider.getApplicationContext(),
                 OverlayManagerCompat(ApplicationProvider.getApplicationContext())
             )
+        }
+
+        @Provides
+        @Singleton
+        fun provideCustomizationProviderClient(
+            @ApplicationContext context: Context,
+            @BackgroundDispatcher bgDispatcher: CoroutineDispatcher,
+        ): CustomizationProviderClient {
+            return CustomizationProviderClientImpl(context, bgDispatcher)
         }
     }
 }
