@@ -29,8 +29,10 @@ import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUti
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class ThemePickerCustomizationOptionsBinder
 @Inject
@@ -40,12 +42,14 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
     override fun bind(
         view: View,
         lockScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
+        homeScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
         viewModel: CustomizationOptionsViewModel,
         lifecycleOwner: LifecycleOwner
     ) {
         defaultCustomizationOptionsBinder.bind(
             view,
             lockScreenCustomizationOptionEntries,
+            homeScreenCustomizationOptionEntries,
             viewModel,
             lifecycleOwner
         )
@@ -75,5 +79,11 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                 }
             }
         }
+
+        ShortcutBottomSheetBinder.bind(
+            view,
+            viewModel.keyguardQuickAffordancePickerViewModel2,
+            lifecycleOwner,
+        )
     }
 }
