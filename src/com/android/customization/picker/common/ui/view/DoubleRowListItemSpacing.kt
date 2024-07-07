@@ -19,13 +19,13 @@ import android.graphics.Rect
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 
-/** Item spacing used by the RecyclerView. */
-class KeyguardQuickAffordanceItemSpacing() : RecyclerView.ItemDecoration() {
+/** Item spacing used by the RecyclerView with 2 rows. */
+class DoubleRowListItemSpacing(private val rowSpaceDp: Int) : RecyclerView.ItemDecoration() {
     override fun getItemOffsets(
         outRect: Rect,
         view: View,
         parent: RecyclerView,
-        state: RecyclerView.State
+        state: RecyclerView.State,
     ) {
         val itemIndex = parent.getChildAdapterPosition(view)
         val columnIndex = itemIndex / 2
@@ -62,10 +62,7 @@ class KeyguardQuickAffordanceItemSpacing() : RecyclerView.ItemDecoration() {
         }
 
         if (itemIndex % 2 == 0) {
-            outRect.top = FIRST_ROW_TOP_SPACING_DP.toPx(density)
-            outRect.bottom = FIRST_ROW_BOTTOM_SPACING_DP.toPx(density)
-        } else {
-            outRect.bottom = SECOND_ROW_BOTTOM_SPACING_DP.toPx(density)
+            outRect.bottom = rowSpaceDp.toPx(density)
         }
     }
 
@@ -75,9 +72,6 @@ class KeyguardQuickAffordanceItemSpacing() : RecyclerView.ItemDecoration() {
 
     companion object {
         const val EDGE_ITEM_HORIZONTAL_SPACING_DP = 20
-        const val COMMON_HORIZONTAL_SPACING_DP = 9
-        const val FIRST_ROW_TOP_SPACING_DP = 20
-        const val FIRST_ROW_BOTTOM_SPACING_DP = 8
-        const val SECOND_ROW_BOTTOM_SPACING_DP = 24
+        const val COMMON_HORIZONTAL_SPACING_DP = 4
     }
 }
