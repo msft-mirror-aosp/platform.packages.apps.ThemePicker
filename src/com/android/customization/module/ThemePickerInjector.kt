@@ -22,7 +22,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.net.Uri
-import android.text.TextUtils
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -47,7 +46,6 @@ import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.view.ClockViewFactoryImpl
 import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
-import com.android.customization.picker.color.data.repository.ColorPickerRepositoryImpl
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
 import com.android.customization.picker.color.domain.interactor.ColorPickerSnapshotRestorer
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
@@ -69,9 +67,7 @@ import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.FragmentFactory
 import com.android.wallpaper.module.WallpaperPicker2Injector
 import com.android.wallpaper.picker.CustomizationPickerActivity
-import com.android.wallpaper.picker.customization.data.content.WallpaperClientImpl
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
-import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
@@ -93,7 +89,6 @@ constructor(
     @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
 ) : WallpaperPicker2Injector(mainScope, bgDispatcher), CustomizationInjector {
     private var customizationSections: CustomizationSections? = null
-    private var wallpaperInteractor: WallpaperInteractor? = null
     private var keyguardQuickAffordancePickerViewModelFactory:
         KeyguardQuickAffordancePickerViewModel.Factory? =
         null
@@ -105,9 +100,7 @@ constructor(
     private var clockPickerSnapshotRestorer: ClockPickerSnapshotRestorer? = null
     private var notificationSettingsInteractor: NotificationSettingsInteractor? = null
     private var notificationSectionViewModelFactory: NotificationSectionViewModel.Factory? = null
-    private var colorPickerInteractor: ColorPickerInteractor? = null
     private var colorPickerViewModelFactory: ColorPickerViewModel.Factory? = null
-    private var colorPickerSnapshotRestorer: ColorPickerSnapshotRestorer? = null
     private var colorCustomizationManager: ColorCustomizationManager? = null
     private var darkModeSnapshotRestorer: DarkModeSnapshotRestorer? = null
     private var themedIconSnapshotRestorer: ThemedIconSnapshotRestorer? = null
@@ -128,6 +121,8 @@ constructor(
     lateinit var keyguardQuickAffordanceSnapshotRestorer:
         Lazy<KeyguardQuickAffordanceSnapshotRestorer>
     @Inject lateinit var themesUserEventLogger: Lazy<ThemesUserEventLogger>
+    @Inject lateinit var colorPickerInteractor: Lazy<ColorPickerInteractor>
+    @Inject lateinit var colorPickerSnapshotRestorer: Lazy<ColorPickerSnapshotRestorer>
 
     override fun getCustomizationSections(activity: ComponentActivity): CustomizationSections {
         val appContext = activity.applicationContext
@@ -135,10 +130,7 @@ constructor(
         val resources = activity.resources
         return customizationSections
             ?: DefaultCustomizationSections(
-                    getColorPickerViewModelFactory(
-                        context = appContext,
-                        wallpaperColorsRepository = getWallpaperColorsRepository(),
-                    ),
+                    getColorPickerViewModelFactory(appContext),
                     getKeyguardQuickAffordancePickerViewModelFactory(appContext),
                     colorContrastSectionViewModelFactory.get(),
                     getNotificationSectionViewModelFactory(appContext),
@@ -151,7 +143,7 @@ constructor(
                     clockViewFactory,
                     getThemedIconSnapshotRestorer(appContext),
                     getThemedIconInteractor(),
-                    getColorPickerInteractor(appContext, getWallpaperColorsRepository()),
+                    colorPickerInteractor.get(),
                     getUserEventLogger(),
                 )
                 .also { customizationSections = it }
@@ -192,8 +184,7 @@ constructor(
             this[KEY_DARK_MODE_SNAPSHOT_RESTORER] = getDarkModeSnapshotRestorer(context)
             this[KEY_THEMED_ICON_SNAPSHOT_RESTORER] = getThemedIconSnapshotRestorer(context)
             this[KEY_APP_GRID_SNAPSHOT_RESTORER] = getGridSnapshotRestorer(context)
-            this[KEY_COLOR_PICKER_SNAPSHOT_RESTORER] =
-                getColorPickerSnapshotRestorer(context, getWallpaperColorsRepository())
+            this[KEY_COLOR_PICKER_SNAPSHOT_RESTORER] = colorPickerSnapshotRestorer.get()
             this[KEY_CLOCKS_SNAPSHOT_RESTORER] = getClockPickerSnapshotRestorer(context)
         }
     }
@@ -203,33 +194,7 @@ constructor(
     }
 
     override fun getWallpaperInteractor(context: Context): WallpaperInteractor {
-        if (getFlags().isMultiCropEnabled()) {
-            return injectedWallpaperInteractor.get()
-        }
-
-        val appContext = context.applicationContext
-        return wallpaperInteractor
-            ?: WallpaperInteractor(
-                    repository =
-                        WallpaperRepository(
-                            scope = getApplicationCoroutineScope(),
-                            client =
-                                WallpaperClientImpl(
-                                    context = appContext,
-                                    wallpaperManager = WallpaperManager.getInstance(appContext),
-                                    wallpaperPreferences = getPreferences(appContext),
-                                ),
-                            wallpaperPreferences = getPreferences(context = appContext),
-                            backgroundDispatcher = bgDispatcher,
-                        ),
-                    shouldHandleReload = {
-                        TextUtils.equals(
-                            getColorCustomizationManager(appContext).currentColorSource,
-                            COLOR_SOURCE_PRESET,
-                        )
-                    }
-                )
-                .also { wallpaperInteractor = it }
+        return injectedWallpaperInteractor.get()
     }
 
     override fun getKeyguardQuickAffordancePickerInteractor(
@@ -375,47 +340,14 @@ constructor(
         return ThemedWallpaperColorResources(wallpaperColors, getSecureSettingsRepository(context))
     }
 
-    override fun getColorPickerInteractor(
-        context: Context,
-        wallpaperColorsRepository: WallpaperColorsRepository,
-    ): ColorPickerInteractor {
-        val appContext = context.applicationContext
-        return colorPickerInteractor
-            ?: ColorPickerInteractor(
-                    repository =
-                        ColorPickerRepositoryImpl(
-                            wallpaperColorsRepository,
-                            getColorCustomizationManager(appContext)
-                        ),
-                    snapshotRestorer = {
-                        getColorPickerSnapshotRestorer(appContext, wallpaperColorsRepository)
-                    }
-                )
-                .also { colorPickerInteractor = it }
-    }
-
-    override fun getColorPickerViewModelFactory(
-        context: Context,
-        wallpaperColorsRepository: WallpaperColorsRepository,
-    ): ColorPickerViewModel.Factory {
+    override fun getColorPickerViewModelFactory(context: Context): ColorPickerViewModel.Factory {
         return colorPickerViewModelFactory
             ?: ColorPickerViewModel.Factory(
                     context.applicationContext,
-                    getColorPickerInteractor(context, wallpaperColorsRepository),
+                    colorPickerInteractor.get(),
                     getUserEventLogger(),
                 )
                 .also { colorPickerViewModelFactory = it }
-    }
-
-    private fun getColorPickerSnapshotRestorer(
-        context: Context,
-        wallpaperColorsRepository: WallpaperColorsRepository,
-    ): ColorPickerSnapshotRestorer {
-        return colorPickerSnapshotRestorer
-            ?: ColorPickerSnapshotRestorer(
-                    getColorPickerInteractor(context, wallpaperColorsRepository)
-                )
-                .also { colorPickerSnapshotRestorer = it }
     }
 
     private fun getColorCustomizationManager(context: Context): ColorCustomizationManager {
@@ -470,10 +402,7 @@ constructor(
             ?: ClockSettingsViewModel.Factory(
                     context.applicationContext,
                     getClockPickerInteractor(context),
-                    getColorPickerInteractor(
-                        context,
-                        wallpaperColorsRepository,
-                    ),
+                    colorPickerInteractor.get(),
                     getUserEventLogger(),
                 ) { clockId ->
                     clockId?.let { clockViewFactory.getController(clockId).config.isReactiveToTone }
