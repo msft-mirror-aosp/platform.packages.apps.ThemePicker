@@ -21,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.customization.ui.util.ThemePickerCustomizationOptionUtil.ThemePickerHomeCustomizationOption
 import com.android.wallpaper.customization.ui.util.ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption
 import com.android.wallpaper.customization.ui.viewmodel.ThemePickerCustomizationOptionsViewModel
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
@@ -29,8 +30,10 @@ import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUti
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class ThemePickerCustomizationOptionsBinder
 @Inject
@@ -60,6 +63,10 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             lockScreenCustomizationOptionEntries
                 .find { it.first == ThemePickerLockCustomizationOption.SHORTCUTS }
                 ?.second
+        val optionColors =
+            homeScreenCustomizationOptionEntries
+                .find { it.first == ThemePickerHomeCustomizationOption.COLORS }
+                ?.second
         viewModel as ThemePickerCustomizationOptionsViewModel
 
         lifecycleOwner.lifecycleScope.launch {
@@ -75,7 +82,25 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                         optionShortcut?.setOnClickListener { _ -> it?.invoke() }
                     }
                 }
+
+                launch {
+                    viewModel.onCustomizeColorsClicked.collect {
+                        optionColors?.setOnClickListener { _ -> it?.invoke() }
+                    }
+                }
             }
         }
+
+        ShortcutFloatingSheetBinder.bind(
+            view,
+            viewModel.keyguardQuickAffordancePickerViewModel2,
+            lifecycleOwner,
+        )
+
+        ColorsFloatingSheetBinder.bind(
+            view,
+            viewModel.colorPickerViewModel2,
+            lifecycleOwner,
+        )
     }
 }

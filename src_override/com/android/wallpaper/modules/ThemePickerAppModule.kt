@@ -23,14 +23,17 @@ import com.android.customization.module.DefaultCustomizationPreferences
 import com.android.customization.module.ThemePickerInjector
 import com.android.customization.module.logging.ThemesUserEventLogger
 import com.android.customization.module.logging.ThemesUserEventLoggerImpl
+import com.android.customization.picker.color.data.repository.ColorPickerRepository
+import com.android.customization.picker.color.data.repository.ColorPickerRepositoryImpl
+import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
+import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.wallpaper.customization.ui.binder.ThemePickerCustomizationOptionsBinder
 import com.android.wallpaper.module.DefaultPartnerProvider
 import com.android.wallpaper.module.PartnerProvider
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
-import com.android.wallpaper.picker.preview.data.util.DefaultLiveWallpaperDownloader
-import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
+import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
@@ -42,6 +45,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -64,12 +68,6 @@ abstract class ThemePickerAppModule {
 
     @Binds
     @Singleton
-    abstract fun bindLiveWallpaperDownloader(
-        impl: DefaultLiveWallpaperDownloader
-    ): LiveWallpaperDownloader
-
-    @Binds
-    @Singleton
     abstract fun bindPartnerProvider(impl: DefaultPartnerProvider): PartnerProvider
 
     @Binds
@@ -83,6 +81,10 @@ abstract class ThemePickerAppModule {
     abstract fun bindCustomizationOptionsBinder(
         impl: ThemePickerCustomizationOptionsBinder
     ): CustomizationOptionsBinder
+
+    @Binds
+    @Singleton
+    abstract fun bindColorPickerRepository(impl: ColorPickerRepositoryImpl): ColorPickerRepository
 
     companion object {
         @Provides
@@ -99,6 +101,15 @@ abstract class ThemePickerAppModule {
             @ApplicationContext context: Context
         ): ColorCustomizationManager {
             return ColorCustomizationManager.getInstance(context, OverlayManagerCompat(context))
+        }
+
+        @Provides
+        @Singleton
+        fun provideCustomizationProviderClient(
+            @ApplicationContext context: Context,
+            @BackgroundDispatcher bgDispatcher: CoroutineDispatcher,
+        ): CustomizationProviderClient {
+            return CustomizationProviderClientImpl(context, bgDispatcher)
         }
     }
 }
