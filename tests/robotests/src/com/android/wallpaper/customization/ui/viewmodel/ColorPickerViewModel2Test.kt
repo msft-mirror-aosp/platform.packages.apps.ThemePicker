@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,9 +12,9 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
-package com.android.customization.model.picker.color.ui.viewmodel
+
+package com.android.wallpaper.customization.ui.viewmodel
 
 import android.content.Context
 import android.graphics.Color
@@ -28,7 +28,6 @@ import com.android.customization.picker.color.domain.interactor.ColorPickerInter
 import com.android.customization.picker.color.domain.interactor.ColorPickerSnapshotRestorer
 import com.android.customization.picker.color.shared.model.ColorType
 import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
-import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
 import com.android.customization.picker.color.ui.viewmodel.ColorTypeTabViewModel
 import com.android.systemui.monet.Style
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
@@ -39,9 +38,8 @@ import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -54,9 +52,9 @@ import org.robolectric.RobolectricTestRunner
 @OptIn(ExperimentalCoroutinesApi::class)
 @SmallTest
 @RunWith(RobolectricTestRunner::class)
-class ColorPickerViewModelTest {
+class ColorPickerViewModel2Test {
     private val logger = TestThemesUserEventLogger()
-    private lateinit var underTest: ColorPickerViewModel
+    private lateinit var underTest: ColorPickerViewModel2
     private lateinit var repository: FakeColorPickerRepository
     private lateinit var interactor: ColorPickerInteractor
     private lateinit var store: FakeSnapshotStore
@@ -67,7 +65,7 @@ class ColorPickerViewModelTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        val testDispatcher = StandardTestDispatcher()
+        val testDispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         testScope = TestScope(testDispatcher)
         repository = FakeColorPickerRepository(context = context)
@@ -83,12 +81,12 @@ class ColorPickerViewModelTest {
             )
 
         underTest =
-            ColorPickerViewModel.Factory(
-                    context = context,
-                    interactor = interactor,
-                    logger = logger
-                )
-                .create(ColorPickerViewModel::class.java)
+            ColorPickerViewModel2(
+                context = context,
+                interactor = interactor,
+                logger = logger,
+                viewModelScope = testScope.backgroundScope,
+            )
 
         repository.setOptions(4, 4, ColorType.WALLPAPER_COLOR, 0)
     }
@@ -97,29 +95,6 @@ class ColorPickerViewModelTest {
     fun tearDown() {
         Dispatchers.resetMain()
     }
-
-    @Test
-    fun `Select a color section color`() =
-        testScope.runTest {
-            val colorSectionOptions = collectLastValue(underTest.colorSectionOptions)
-
-            assertColorOptionUiState(
-                colorOptions = colorSectionOptions(),
-                selectedColorOptionIndex = 0
-            )
-
-            selectColorOption(colorSectionOptions, 2)
-            assertColorOptionUiState(
-                colorOptions = colorSectionOptions(),
-                selectedColorOptionIndex = 2
-            )
-
-            selectColorOption(colorSectionOptions, 4)
-            assertColorOptionUiState(
-                colorOptions = colorSectionOptions(),
-                selectedColorOptionIndex = 4
-            )
-        }
 
     @Test
     fun `Log selected wallpaper color`() =
@@ -144,7 +119,6 @@ class ColorPickerViewModelTest {
             colorTypes()?.get(ColorType.WALLPAPER_COLOR)?.onClick?.invoke()
             // Select a color option
             selectColorOption(colorOptions, 0)
-            advanceUntilIdle()
 
             assertThat(logger.themeColorSource)
                 .isEqualTo(StyleEnums.COLOR_SOURCE_LOCK_SCREEN_WALLPAPER)
@@ -175,7 +149,6 @@ class ColorPickerViewModelTest {
             colorTypes()?.get(ColorType.PRESET_COLOR)?.onClick?.invoke()
             // Select a color option
             selectColorOption(colorOptions, 0)
-            advanceUntilIdle()
 
             assertThat(logger.themeColorSource).isEqualTo(StyleEnums.COLOR_SOURCE_PRESET_COLOR)
             assertThat(logger.themeColorStyle).isEqualTo(Style.FRUIT_SALAD.toString().hashCode())

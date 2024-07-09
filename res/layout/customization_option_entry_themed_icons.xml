@@ -17,6 +17,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingHorizontal="@dimen/customization_option_entry_horizontal_padding"
@@ -24,25 +25,39 @@
     android:clickable="true">
 
     <TextView
-        android:id="@+id/option_entry_more_lock_settings_title"
+        android:id="@+id/option_entry_themed_icons_title"
         style="@style/CustomizationOptionEntryTitleTextStyle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/more_settings_section_title"
+        android:text="@string/themed_icon_title"
+        android:layout_marginEnd="@dimen/customization_option_entry_text_margin_end"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/option_entry_more_lock_settings_description"
+        app:layout_constraintEnd_toStartOf="@+id/option_entry_themed_icons_switch"
+        app:layout_constraintBottom_toTopOf="@+id/option_entry_themed_icons_description"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_chainStyle="packed" />
 
     <TextView
-        android:id="@+id/option_entry_more_lock_settings_description"
+        android:id="@+id/option_entry_themed_icons_description"
         style="@style/CustomizationOptionEntrySubtitleTextStyle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/more_settings_section_description"
+        android:layout_marginEnd="@dimen/customization_option_entry_text_margin_end"
+        android:text="@string/beta_title"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/option_entry_themed_icons_switch"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/option_entry_themed_icons_title" />
+
+    <Switch
+        android:id="@+id/option_entry_themed_icons_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:focusable="false"
+        android:clickable="false"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/option_entry_more_lock_settings_title" />
+        style="@style/Switch.SettingsLib"
+        tools:ignore="UseSwitchCompatOrMaterialXml" />
 </androidx.constraintlayout.widget.ConstraintLayout>
