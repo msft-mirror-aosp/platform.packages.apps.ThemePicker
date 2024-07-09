@@ -67,7 +67,9 @@ import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.FragmentFactory
 import com.android.wallpaper.module.WallpaperPicker2Injector
 import com.android.wallpaper.picker.CustomizationPickerActivity
+import com.android.wallpaper.picker.customization.data.content.WallpaperClientImpl
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
+import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
@@ -89,6 +91,7 @@ constructor(
     @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
 ) : WallpaperPicker2Injector(mainScope, bgDispatcher), CustomizationInjector {
     private var customizationSections: CustomizationSections? = null
+    private var wallpaperInteractor: WallpaperInteractor? = null
     private var keyguardQuickAffordancePickerViewModelFactory:
         KeyguardQuickAffordancePickerViewModel.Factory? =
         null
@@ -194,7 +197,27 @@ constructor(
     }
 
     override fun getWallpaperInteractor(context: Context): WallpaperInteractor {
-        return injectedWallpaperInteractor.get()
+        if (getFlags().isMultiCropEnabled()) {
+            return injectedWallpaperInteractor.get()
+        }
+
+        val appContext = context.applicationContext
+        return wallpaperInteractor
+            ?: WallpaperInteractor(
+                    repository =
+                        WallpaperRepository(
+                            scope = getApplicationCoroutineScope(),
+                            client =
+                                WallpaperClientImpl(
+                                    context = appContext,
+                                    wallpaperManager = WallpaperManager.getInstance(appContext),
+                                    wallpaperPreferences = getPreferences(appContext),
+                                ),
+                            wallpaperPreferences = getPreferences(context = appContext),
+                            backgroundDispatcher = bgDispatcher,
+                        ),
+                )
+                .also { wallpaperInteractor = it }
     }
 
     override fun getKeyguardQuickAffordancePickerInteractor(
