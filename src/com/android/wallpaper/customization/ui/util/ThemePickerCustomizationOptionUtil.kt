@@ -49,8 +49,6 @@ constructor(private val defaultCustomizationOptionUtil: DefaultCustomizationOpti
         THEMED_ICONS,
     }
 
-    private var viewMap: Map<CustomizationOptionUtil.CustomizationOption, View>? = null
-
     override fun getOptionEntries(
         screen: Screen,
         optionContainer: LinearLayout,
@@ -138,15 +136,17 @@ constructor(private val defaultCustomizationOptionUtil: DefaultCustomizationOpti
         }
     }
 
-    override fun initBottomSheetContent(
+    override fun initFloatingSheet(
         bottomSheetContainer: FrameLayout,
         layoutInflater: LayoutInflater
-    ) {
-        defaultCustomizationOptionUtil.initBottomSheetContent(bottomSheetContainer, layoutInflater)
-        viewMap = buildMap {
+    ): Map<CustomizationOptionUtil.CustomizationOption, View> {
+        val map =
+            defaultCustomizationOptionUtil.initFloatingSheet(bottomSheetContainer, layoutInflater)
+        return buildMap {
+            putAll(map)
             put(
                 ThemePickerLockCustomizationOption.CLOCK,
-                createCustomizationPickerBottomSheetView(
+                inflateFloatingSheet(
                         ThemePickerLockCustomizationOption.CLOCK,
                         bottomSheetContainer,
                         layoutInflater,
@@ -155,8 +155,17 @@ constructor(private val defaultCustomizationOptionUtil: DefaultCustomizationOpti
             )
             put(
                 ThemePickerLockCustomizationOption.SHORTCUTS,
-                createCustomizationPickerBottomSheetView(
+                inflateFloatingSheet(
                         ThemePickerLockCustomizationOption.SHORTCUTS,
+                        bottomSheetContainer,
+                        layoutInflater,
+                    )
+                    .also { bottomSheetContainer.addView(it) }
+            )
+            put(
+                ThemePickerHomeCustomizationOption.COLORS,
+                inflateFloatingSheet(
+                        ThemePickerHomeCustomizationOption.COLORS,
                         bottomSheetContainer,
                         layoutInflater,
                     )
@@ -165,22 +174,15 @@ constructor(private val defaultCustomizationOptionUtil: DefaultCustomizationOpti
         }
     }
 
-    override fun getBottomSheetContent(option: CustomizationOptionUtil.CustomizationOption): View? {
-        return defaultCustomizationOptionUtil.getBottomSheetContent(option) ?: viewMap?.get(option)
-    }
-
-    override fun onDestroy() {
-        viewMap = null
-    }
-
-    private fun createCustomizationPickerBottomSheetView(
-        option: ThemePickerLockCustomizationOption,
+    private fun inflateFloatingSheet(
+        option: CustomizationOptionUtil.CustomizationOption,
         bottomSheetContainer: FrameLayout,
         layoutInflater: LayoutInflater,
     ): View =
         when (option) {
-            ThemePickerLockCustomizationOption.CLOCK -> R.layout.bottom_sheet_clock
-            ThemePickerLockCustomizationOption.SHORTCUTS -> R.layout.bottom_sheet_shortcut
+            ThemePickerLockCustomizationOption.CLOCK -> R.layout.floating_sheet_clock
+            ThemePickerLockCustomizationOption.SHORTCUTS -> R.layout.floating_sheet_shortcut
+            ThemePickerHomeCustomizationOption.COLORS -> R.layout.floating_sheet_colors
             else ->
                 throw IllegalStateException(
                     "Customization option $option does not have a bottom sheet view"
