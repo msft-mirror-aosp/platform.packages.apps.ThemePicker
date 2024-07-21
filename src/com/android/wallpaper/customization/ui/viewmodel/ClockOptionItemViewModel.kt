@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,27 +12,15 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
-package com.android.customization.picker.clock.shared.model
+package com.android.wallpaper.customization.ui.viewmodel
 
 import android.graphics.drawable.Drawable
-import androidx.annotation.ColorInt
-import androidx.annotation.IntRange
 
-/** Model for clock metadata. */
-data class ClockMetadataModel(
+data class ClockOptionItemViewModel(
     val clockId: String,
     val isSelected: Boolean,
-    val description: String,
+    val contentDescription: String,
     val thumbnail: Drawable,
-    val isReactiveToTone: Boolean,
-    val selectedColorId: String?,
-    @IntRange(from = 0, to = 100) val colorToneProgress: Int,
-    @ColorInt val seedColor: Int?,
-) {
-    companion object {
-        const val DEFAULT_COLOR_TONE_PROGRESS = 75
-    }
-}
+)
