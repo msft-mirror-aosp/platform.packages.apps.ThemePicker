@@ -18,16 +18,15 @@
 package com.android.customization.picker.notifications.ui.viewmodel
 
 import androidx.test.filters.SmallTest
-import com.android.customization.picker.notifications.data.repository.NotificationsRepository
-import com.android.customization.picker.notifications.domain.interactor.NotificationsInteractor
-import com.android.customization.picker.notifications.domain.interactor.NotificationsSnapshotRestorer
-import com.android.wallpaper.testing.FakeSecureSettingsRepository
-import com.android.wallpaper.testing.FakeSnapshotStore
+import com.android.customization.module.logging.TestThemesUserEventLogger
+import com.android.customization.module.logging.ThemesUserEventLogger
+import com.android.systemui.shared.notifications.data.repository.NotificationSettingsRepository
+import com.android.systemui.shared.notifications.domain.interactor.NotificationSettingsInteractor
+import com.android.systemui.shared.settings.data.repository.FakeSecureSettingsRepository
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -44,10 +43,12 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class NotificationSectionViewModelTest {
 
+    private val logger: ThemesUserEventLogger = TestThemesUserEventLogger()
+
     private lateinit var underTest: NotificationSectionViewModel
 
     private lateinit var testScope: TestScope
-    private lateinit var interactor: NotificationsInteractor
+    private lateinit var interactor: NotificationSettingsInteractor
 
     @Before
     fun setUp() {
@@ -55,24 +56,19 @@ class NotificationSectionViewModelTest {
         Dispatchers.setMain(testDispatcher)
         testScope = TestScope(testDispatcher)
         interactor =
-            NotificationsInteractor(
+            NotificationSettingsInteractor(
                 repository =
-                    NotificationsRepository(
+                    NotificationSettingsRepository(
                         scope = testScope.backgroundScope,
                         backgroundDispatcher = testDispatcher,
                         secureSettingsRepository = FakeSecureSettingsRepository(),
                     ),
-                snapshotRestorer = {
-                    NotificationsSnapshotRestorer(
-                            interactor = interactor,
-                        )
-                        .apply { runBlocking { setUpSnapshotRestorer(FakeSnapshotStore()) } }
-                },
             )
 
         underTest =
             NotificationSectionViewModel(
                 interactor = interactor,
+                logger = logger,
             )
     }
 

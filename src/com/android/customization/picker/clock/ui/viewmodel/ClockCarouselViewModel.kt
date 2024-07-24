@@ -15,13 +15,16 @@
  */
 package com.android.customization.picker.clock.ui.viewmodel
 
+import android.content.res.Resources
 import android.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.android.customization.module.logging.ThemesUserEventLogger
 import com.android.customization.picker.clock.domain.interactor.ClockPickerInteractor
 import com.android.customization.picker.clock.shared.ClockSize
-import com.android.wallpaper.R
+import com.android.customization.picker.clock.ui.view.ClockViewFactory
+import com.android.themepicker.R
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -30,6 +33,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
@@ -43,6 +47,9 @@ import kotlinx.coroutines.launch
 class ClockCarouselViewModel(
     private val interactor: ClockPickerInteractor,
     private val backgroundDispatcher: CoroutineDispatcher,
+    private val clockViewFactory: ClockViewFactory,
+    private val resources: Resources,
+    private val logger: ThemesUserEventLogger,
 ) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val allClocks: StateFlow<List<ClockCarouselItemViewModel>> =
@@ -50,8 +57,19 @@ class ClockCarouselViewModel(
             .mapLatest { allClocks ->
                 // Delay to avoid the case that the full list of clocks is not initiated.
                 delay(CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
-                allClocks.map { ClockCarouselItemViewModel(it.clockId, it.isSelected) }
+                allClocks.map {
+                    val contentDescription =
+                        resources.getString(
+                            R.string.select_clock_action_description,
+                            clockViewFactory.getController(it.clockId).config.description
+                        )
+                    ClockCarouselItemViewModel(it.clockId, it.isSelected, contentDescription)
+                }
             }
+            // makes sure that the operations above this statement are executed on I/O dispatcher
+            // while parallelism limits the number of threads this can run on which makes sure that
+            // the flows run sequentially
+            .flowOn(backgroundDispatcher.limitedParallelism(1))
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val selectedClockSize: Flow<ClockSize> = interactor.selectedClockSize
@@ -65,24 +83,24 @@ class ClockCarouselViewModel(
                 if (seedColor == null) {
                     if (isDarkThemeEnabled) {
                         // In dark mode, use darkest surface container color
-                        R.color.system_surface_container_high
+                        com.android.wallpaper.R.color.system_surface_container_high
                     } else {
                         // In light mode, use lightest surface container color
-                        R.color.system_surface_bright
+                        com.android.wallpaper.R.color.system_surface_bright
                     }
                 } else {
                     val luminance = Color.luminance(seedColor)
                     if (isDarkThemeEnabled) {
                         if (luminance <= CARD_COLOR_CHANGE_LUMINANCE_THRESHOLD_DARK_THEME) {
-                            R.color.system_surface_bright
+                            com.android.wallpaper.R.color.system_surface_bright
                         } else {
-                            R.color.system_surface_container_high
+                            com.android.wallpaper.R.color.system_surface_container_high
                         }
                     } else {
                         if (luminance <= CARD_COLOR_CHANGE_LUMINANCE_THRESHOLD_LIGHT_THEME) {
-                            R.color.system_surface_bright
+                            com.android.wallpaper.R.color.system_surface_bright
                         } else {
-                            R.color.system_surface_container_highest
+                            com.android.wallpaper.R.color.system_surface_container_highest
                         }
                     }
                 }
@@ -111,18 +129,27 @@ class ClockCarouselViewModel(
     fun setSelectedClock(clockId: String) {
         setSelectedClockJob?.cancel()
         setSelectedClockJob =
-            viewModelScope.launch(backgroundDispatcher) { interactor.setSelectedClock(clockId) }
+            viewModelScope.launch(backgroundDispatcher) {
+                interactor.setSelectedClock(clockId)
+                logger.logClockApplied(clockId)
+            }
     }
 
     class Factory(
         private val interactor: ClockPickerInteractor,
         private val backgroundDispatcher: CoroutineDispatcher,
+        private val clockViewFactory: ClockViewFactory,
+        private val resources: Resources,
+        private val logger: ThemesUserEventLogger,
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
             return ClockCarouselViewModel(
                 interactor = interactor,
                 backgroundDispatcher = backgroundDispatcher,
+                clockViewFactory = clockViewFactory,
+                resources = resources,
+                logger = logger,
             )
                 as T
         }

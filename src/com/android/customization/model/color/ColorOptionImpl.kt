@@ -17,12 +17,13 @@
 package com.android.customization.model.color
 
 import android.content.Context
+import android.stats.style.StyleEnums
 import android.view.View
 import androidx.annotation.ColorInt
 import com.android.customization.model.color.ColorOptionsProvider.ColorSource
 import com.android.customization.picker.color.shared.model.ColorType
 import com.android.systemui.monet.Style
-import com.android.wallpaper.R
+import com.android.themepicker.R
 
 /**
  * Represents a color option in the revamped UI, it can be used for both wallpaper and preset colors
@@ -67,6 +68,17 @@ class ColorOptionImpl(
     override fun getSource(): String? {
         return source
     }
+
+    override fun getSourceForLogging(): Int {
+        return when (getSource()) {
+            ColorOptionsProvider.COLOR_SOURCE_PRESET -> StyleEnums.COLOR_SOURCE_PRESET_COLOR
+            ColorOptionsProvider.COLOR_SOURCE_HOME -> StyleEnums.COLOR_SOURCE_HOME_SCREEN_WALLPAPER
+            ColorOptionsProvider.COLOR_SOURCE_LOCK -> StyleEnums.COLOR_SOURCE_LOCK_SCREEN_WALLPAPER
+            else -> StyleEnums.COLOR_SOURCE_UNSPECIFIED
+        }
+    }
+
+    override fun getStyleForLogging(): Int = style.toString().hashCode()
 
     class Builder {
         var title: String? = null

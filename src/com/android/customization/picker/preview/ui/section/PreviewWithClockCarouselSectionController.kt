@@ -39,13 +39,13 @@ import com.android.customization.picker.clock.ui.view.ClockCarouselView
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
-import com.android.wallpaper.R
+import com.android.themepicker.R
 import com.android.wallpaper.model.CustomizationSectionController
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController
-import com.android.wallpaper.model.WallpaperColorsViewModel
 import com.android.wallpaper.model.WallpaperPreviewNavigator
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory
 import com.android.wallpaper.module.CustomizationSections
+import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewClickView
 import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewSectionController
@@ -64,7 +64,7 @@ class PreviewWithClockCarouselSectionController(
     private val lifecycleOwner: LifecycleOwner,
     private val screen: CustomizationSections.Screen,
     wallpaperInfoFactory: CurrentWallpaperInfoFactory,
-    colorViewModel: WallpaperColorsViewModel,
+    wallpaperColorsRepository: WallpaperColorsRepository,
     displayUtils: DisplayUtils,
     clockCarouselViewModelFactory: ClockCarouselViewModel.Factory,
     private val clockViewFactory: ClockViewFactory,
@@ -82,7 +82,7 @@ class PreviewWithClockCarouselSectionController(
         lifecycleOwner,
         screen,
         wallpaperInfoFactory,
-        colorViewModel,
+        wallpaperColorsRepository,
         displayUtils,
         wallpaperPreviewNavigator,
         wallpaperInteractor,
@@ -111,9 +111,9 @@ class PreviewWithClockCarouselSectionController(
         val view = super.createView(context, params)
         if (screen == CustomizationSections.Screen.LOCK_SCREEN) {
             val screenPreviewClickView: ScreenPreviewClickView =
-                view.requireViewById(R.id.screen_preview_click_view)
+                view.requireViewById(com.android.wallpaper.R.id.screen_preview_click_view)
             val clockColorAndSizeButtonStub: ViewStub =
-                view.requireViewById(R.id.clock_color_and_size_button)
+                view.requireViewById(com.android.wallpaper.R.id.clock_color_and_size_button)
             clockColorAndSizeButtonStub.layoutResource = R.layout.clock_color_and_size_button
             clockColorAndSizeButton = clockColorAndSizeButtonStub.inflate() as View
             clockColorAndSizeButton?.setOnClickListener {
@@ -127,14 +127,17 @@ class PreviewWithClockCarouselSectionController(
                 val padding =
                     context
                         .getResources()
-                        .getDimensionPixelSize(R.dimen.screen_preview_section_vertical_space)
+                        .getDimensionPixelSize(
+                            com.android.wallpaper.R.dimen.screen_preview_section_vertical_space
+                        )
                 rect.top -= padding
                 rect.bottom += padding
                 val touchDelegate = TouchDelegate(rect, clockColorAndSizeButton)
                 view.setTouchDelegate(touchDelegate)
             }
 
-            val carouselViewStub: ViewStub = view.requireViewById(R.id.clock_carousel_view_stub)
+            val carouselViewStub: ViewStub =
+                view.requireViewById(com.android.wallpaper.R.id.clock_carousel_view_stub)
             carouselViewStub.layoutResource = R.layout.clock_carousel_view
             val carouselView = carouselViewStub.inflate() as ClockCarouselView
 

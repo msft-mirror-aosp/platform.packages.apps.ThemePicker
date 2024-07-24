@@ -29,7 +29,7 @@ import androidx.transition.doOnStart
 import com.android.customization.module.ThemePickerInjector
 import com.android.customization.picker.clock.ui.binder.ClockSettingsBinder
 import com.android.systemui.shared.clocks.shared.model.ClockPreviewConstants
-import com.android.wallpaper.R
+import com.android.themepicker.R
 import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
@@ -68,7 +68,7 @@ class ClockSettingsFragment : AppbarFragment() {
         val injector = InjectorProvider.getInjector() as ThemePickerInjector
 
         val lockScreenView: CardView = view.requireViewById(R.id.lock_preview)
-        val colorViewModel = injector.getWallpaperColorsViewModel()
+        val wallpaperColorsRepository = injector.getWallpaperColorsRepository()
         val displayUtils = injector.getDisplayUtils(context)
         ScreenPreviewBinder.bind(
             activity = activity,
@@ -80,7 +80,8 @@ class ClockSettingsFragment : AppbarFragment() {
                             context = context,
                             authority =
                                 resources.getString(
-                                    R.string.lock_screen_preview_provider_authority,
+                                    com.android.wallpaper.R.string
+                                        .lock_screen_preview_provider_authority,
                                 ),
                         ),
                     wallpaperInfoProvider = { forceReload ->
@@ -88,18 +89,18 @@ class ClockSettingsFragment : AppbarFragment() {
                             injector
                                 .getCurrentWallpaperInfoFactory(context)
                                 .createCurrentWallpaperInfos(
-                                    { homeWallpaper, lockWallpaper, _ ->
-                                        continuation.resume(
-                                            lockWallpaper ?: homeWallpaper,
-                                            null,
-                                        )
-                                    },
+                                    context,
                                     forceReload,
-                                )
+                                ) { homeWallpaper, lockWallpaper, _ ->
+                                    continuation.resume(
+                                        lockWallpaper ?: homeWallpaper,
+                                        null,
+                                    )
+                                }
                         }
                     },
                     onWallpaperColorChanged = { colors ->
-                        colorViewModel.setLockWallpaperColors(colors)
+                        wallpaperColorsRepository.setLockWallpaperColors(colors)
                     },
                     initialExtrasProvider = {
                         Bundle().apply {
@@ -125,7 +126,7 @@ class ClockSettingsFragment : AppbarFragment() {
                     this,
                     injector.getClockSettingsViewModelFactory(
                         context,
-                        injector.getWallpaperColorsViewModel(),
+                        injector.getWallpaperColorsRepository(),
                         injector.getClockViewFactory(activity),
                     ),
                 )
@@ -148,6 +149,9 @@ class ClockSettingsFragment : AppbarFragment() {
     }
 
     override fun getToolbarTextColor(): Int {
-        return ContextCompat.getColor(requireContext(), R.color.system_on_surface)
+        return ContextCompat.getColor(
+            requireContext(),
+            com.android.wallpaper.R.color.system_on_surface
+        )
     }
 }
