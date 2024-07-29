@@ -14,7 +14,6 @@ import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewMode
 import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
 import com.android.customization.picker.color.ui.viewmodel.ColorPickerViewModel
 import com.android.customization.picker.quickaffordance.domain.interactor.KeyguardQuickAffordancePickerInteractor
-import com.android.systemui.shared.clocks.ClockRegistry
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
 import com.android.wallpaper.testing.TestInjector
@@ -42,14 +41,6 @@ constructor(
         throw UnsupportedOperationException("not implemented")
     }
 
-    override fun getClockRegistry(context: Context): ClockRegistry? {
-        throw UnsupportedOperationException("not implemented")
-    }
-
-    override fun getClockPickerInteractor(context: Context): ClockPickerInteractor {
-        throw UnsupportedOperationException("not implemented")
-    }
-
     override fun getWallpaperColorResources(
         wallpaperColors: WallpaperColors,
         context: Context
@@ -57,10 +48,7 @@ constructor(
         throw UnsupportedOperationException("not implemented")
     }
 
-    override fun getColorPickerViewModelFactory(
-        context: Context,
-        wallpaperColorsRepository: WallpaperColorsRepository,
-    ): ColorPickerViewModel.Factory {
+    override fun getColorPickerViewModelFactory(context: Context): ColorPickerViewModel.Factory {
         throw UnsupportedOperationException("not implemented")
     }
 
