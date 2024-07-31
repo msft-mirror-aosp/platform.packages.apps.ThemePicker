@@ -13,22 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.picker.di.modules
 
-import com.android.wallpaper.effects.DefaultEffectsController
-import com.android.wallpaper.effects.EffectsController
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
+package com.android.wallpaper.customization.ui.viewmodel
 
-/** This class provides the singleton scoped effects controller for wallpaper picker. */
-@InstallIn(SingletonComponent::class)
-@Module
-abstract class EffectsModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindEffectsController(impl: DefaultEffectsController): EffectsController
-}
+data class ClockFloatingSheetHeightsViewModel(
+    val clockStyleContentHeight: Int,
+    val clockColorContentHeight: Int,
+    val clockSizeContentHeight: Int,
+)
