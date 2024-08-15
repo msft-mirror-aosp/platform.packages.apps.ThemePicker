@@ -45,8 +45,9 @@ import com.android.customization.picker.clock.ui.view.ClockHostView
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
 import com.android.customization.picker.color.ui.binder.ColorOptionIconBinder
-import com.android.customization.picker.common.ui.view.ItemSpacing
 import com.android.themepicker.R
+import com.android.wallpaper.config.BaseFlags
+import com.android.wallpaper.picker.common.ui.view.ItemSpacing
 import com.android.wallpaper.picker.option.ui.binder.OptionItemBinder
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapNotNull
@@ -81,6 +82,7 @@ object ClockSettingsBinder {
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {
                     seekBar?.progress?.let {
                         lifecycleOwner.lifecycleScope.launch { viewModel.onSliderProgressStop(it) }
@@ -198,6 +200,9 @@ object ClockSettingsBinder {
                         )
                         .collect { (clockId, size) ->
                             clockHostView.removeAllViews()
+                            if (BaseFlags.get().isClockReactiveVariantsEnabled()) {
+                                clockViewFactory.setReactiveTouchInteractionEnabled(clockId, true)
+                            }
                             val clockView =
                                 when (size) {
                                     ClockSize.DYNAMIC -> clockViewFactory.getLargeView(clockId)

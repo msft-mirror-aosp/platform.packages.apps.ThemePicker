@@ -21,13 +21,16 @@ import android.app.WallpaperColors
 import android.os.Bundle
 import com.android.customization.model.themedicon.domain.interactor.ThemedIconInteractor
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
+import com.android.customization.picker.grid.domain.interactor.GridInteractor
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.WallpaperInfo
-import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.ui.viewmodel.ScreenPreviewViewModel
 import com.android.wallpaper.util.PreviewUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 
 /** A ThemePicker version of the [ScreenPreviewViewModel] */
 class PreviewWithThemeViewModel(
@@ -36,9 +39,10 @@ class PreviewWithThemeViewModel(
     wallpaperInfoProvider: suspend (forceReload: Boolean) -> WallpaperInfo?,
     onWallpaperColorChanged: (WallpaperColors?) -> Unit = {},
     wallpaperInteractor: WallpaperInteractor,
-    private val themedIconInteractor: ThemedIconInteractor? = null,
+    private val themedIconInteractor: ThemedIconInteractor,
+    private val gridInteractor: GridInteractor,
     colorPickerInteractor: ColorPickerInteractor? = null,
-    screen: CustomizationSections.Screen,
+    screen: Screen,
 ) :
     ScreenPreviewViewModel(
         previewUtils,
@@ -48,7 +52,11 @@ class PreviewWithThemeViewModel(
         wallpaperInteractor,
         screen,
     ) {
-    override fun workspaceUpdateEvents(): Flow<Boolean>? = themedIconInteractor?.isActivated
+    override fun workspaceUpdateEvents(): Flow<Unit> =
+        merge(
+            themedIconInteractor.isActivated.map {},
+            gridInteractor.getSelectOptionStateFlow().map {}
+        )
 
     private val wallpaperIsLoading = super.isLoading
 
@@ -59,6 +67,5 @@ class PreviewWithThemeViewModel(
                 colorIsLoading ->
                 wallpaperIsLoading || colorIsLoading
             }
-        }
-            ?: wallpaperIsLoading
+        } ?: wallpaperIsLoading
 }

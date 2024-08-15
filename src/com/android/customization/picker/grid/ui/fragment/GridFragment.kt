@@ -36,8 +36,8 @@ import com.android.customization.picker.grid.ui.binder.GridScreenBinder
 import com.android.customization.picker.grid.ui.viewmodel.GridScreenViewModel
 import com.android.themepicker.R
 import com.android.wallpaper.config.BaseFlags
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory
-import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
@@ -115,7 +115,7 @@ class GridFragment : AppbarFragment() {
                                     context,
                                     getString(
                                         R.string.toast_of_changing_grid,
-                                        gridInteractor.getSelectOptionNonSuspend()?.title
+                                        gridInteractor.getSelectOptionStateFlow().value?.title
                                     ),
                                     Toast.LENGTH_SHORT
                                 )
@@ -128,7 +128,7 @@ class GridFragment : AppbarFragment() {
                             val errorMsg =
                                 getString(
                                     R.string.toast_of_failure_to_change_grid,
-                                    gridInteractor.getSelectOptionNonSuspend()?.title
+                                    gridInteractor.getSelectOptionStateFlow().value?.title
                                 )
                             Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
                             Log.e(TAG, errorMsg, throwable)
@@ -178,7 +178,10 @@ class GridFragment : AppbarFragment() {
                         ),
                     initialExtrasProvider = {
                         val bundle = Bundle()
-                        bundle.putString("name", gridInteractor.getSelectOptionNonSuspend()?.name)
+                        bundle.putString(
+                            "name",
+                            gridInteractor.getSelectOptionStateFlow().value?.name
+                        )
                         bundle
                     },
                     wallpaperInfoProvider = {
@@ -192,7 +195,7 @@ class GridFragment : AppbarFragment() {
                         }
                     },
                     wallpaperInteractor = wallpaperInteractor,
-                    screen = CustomizationSections.Screen.HOME_SCREEN,
+                    screen = Screen.HOME_SCREEN,
                 ),
             lifecycleOwner = viewLifecycleOwner,
             offsetToStart = false,

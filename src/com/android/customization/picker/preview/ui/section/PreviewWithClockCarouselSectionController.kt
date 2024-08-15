@@ -39,12 +39,13 @@ import com.android.customization.picker.clock.ui.view.ClockCarouselView
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.customization.picker.clock.ui.viewmodel.ClockCarouselViewModel
 import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
+import com.android.customization.picker.grid.domain.interactor.GridInteractor
 import com.android.themepicker.R
 import com.android.wallpaper.model.CustomizationSectionController
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.WallpaperPreviewNavigator
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory
-import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewClickView
@@ -62,7 +63,7 @@ import kotlinx.coroutines.launch
 class PreviewWithClockCarouselSectionController(
     activity: ComponentActivity,
     private val lifecycleOwner: LifecycleOwner,
-    private val screen: CustomizationSections.Screen,
+    private val screen: Screen,
     wallpaperInfoFactory: CurrentWallpaperInfoFactory,
     wallpaperColorsRepository: WallpaperColorsRepository,
     displayUtils: DisplayUtils,
@@ -72,6 +73,7 @@ class PreviewWithClockCarouselSectionController(
     private val navigationController: CustomizationSectionNavigationController,
     wallpaperInteractor: WallpaperInteractor,
     themedIconInteractor: ThemedIconInteractor,
+    gridInteractor: GridInteractor,
     colorPickerInteractor: ColorPickerInteractor,
     wallpaperManager: WallpaperManager,
     private val isTwoPaneAndSmallWidth: Boolean,
@@ -87,6 +89,7 @@ class PreviewWithClockCarouselSectionController(
         wallpaperPreviewNavigator,
         wallpaperInteractor,
         themedIconInteractor,
+        gridInteractor,
         colorPickerInteractor,
         wallpaperManager,
         isTwoPaneAndSmallWidth,
@@ -109,7 +112,7 @@ class PreviewWithClockCarouselSectionController(
         params: CustomizationSectionController.ViewCreationParams,
     ): ScreenPreviewView {
         val view = super.createView(context, params)
-        if (screen == CustomizationSections.Screen.LOCK_SCREEN) {
+        if (screen == Screen.LOCK_SCREEN) {
             val screenPreviewClickView: ScreenPreviewClickView =
                 view.requireViewById(com.android.wallpaper.R.id.screen_preview_click_view)
             val clockColorAndSizeButtonStub: ViewStub =
