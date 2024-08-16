@@ -33,11 +33,23 @@ import com.android.systemui.shared.customization.data.content.CustomizationProvi
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepository
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepositoryImpl
+import com.android.systemui.shared.settings.data.repository.SystemSettingsRepository
+import com.android.systemui.shared.settings.data.repository.SystemSettingsRepositoryImpl
 import com.android.wallpaper.customization.ui.binder.ThemePickerCustomizationOptionsBinder
+import com.android.wallpaper.effects.DefaultEffectsController
+import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.module.DefaultPartnerProvider
 import com.android.wallpaper.module.PartnerProvider
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.UserEventLogger
+import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
+import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.implementations.CategoryInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.implementations.CreativeCategoryInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.implementations.DefaultCategoriesLoadingStatusInteractor
+import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
+import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
@@ -58,31 +70,24 @@ import kotlinx.coroutines.CoroutineScope
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class ThemePickerAppModule {
-    @Binds @Singleton abstract fun bindInjector(impl: ThemePickerInjector): CustomizationInjector
 
     @Binds
     @Singleton
-    abstract fun bindUserEventLogger(impl: ThemesUserEventLoggerImpl): UserEventLogger
+    abstract fun bindClockPickerRepository(impl: ClockPickerRepositoryImpl): ClockPickerRepository
 
     @Binds
     @Singleton
-    abstract fun bindThemesUserEventLogger(impl: ThemesUserEventLoggerImpl): ThemesUserEventLogger
+    abstract fun bindColorPickerRepository(impl: ColorPickerRepositoryImpl): ColorPickerRepository
 
     @Binds
     @Singleton
-    abstract fun bindWallpaperModelFactory(
-        impl: DefaultWallpaperModelFactory
-    ): WallpaperModelFactory
+    abstract fun bindCreativeCategoryInteractor(
+        impl: CreativeCategoryInteractorImpl,
+    ): CreativeCategoryInteractor
 
     @Binds
     @Singleton
-    abstract fun bindPartnerProvider(impl: DefaultPartnerProvider): PartnerProvider
-
-    @Binds
-    @Singleton
-    abstract fun bindEffectsWallpaperDialogUtil(
-        impl: DefaultImageEffectDialogUtil
-    ): ImageEffectDialogUtil
+    abstract fun bindCustomizationInjector(impl: ThemePickerInjector): CustomizationInjector
 
     @Binds
     @Singleton
@@ -92,7 +97,47 @@ abstract class ThemePickerAppModule {
 
     @Binds
     @Singleton
-    abstract fun bindColorPickerRepository(impl: ColorPickerRepositoryImpl): ColorPickerRepository
+    abstract fun bindEffectsController(impl: DefaultEffectsController): EffectsController
+
+    @Binds
+    @Singleton
+    abstract fun bindGoogleCategoryInteractor(impl: CategoryInteractorImpl): CategoryInteractor
+
+    @Binds
+    @Singleton
+    abstract fun bindImageEffectDialogUtil(
+        impl: DefaultImageEffectDialogUtil
+    ): ImageEffectDialogUtil
+
+    @Binds
+    @Singleton
+    abstract fun bindIndividualPickerFactoryFragment(
+        impl: DefaultIndividualPickerFactory
+    ): IndividualPickerFactory
+
+    @Binds
+    @Singleton
+    abstract fun bindLoadingStatusInteractor(
+        impl: DefaultCategoriesLoadingStatusInteractor,
+    ): CategoriesLoadingStatusInteractor
+
+    @Binds
+    @Singleton
+    abstract fun bindPartnerProvider(impl: DefaultPartnerProvider): PartnerProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindThemesUserEventLogger(impl: ThemesUserEventLoggerImpl): ThemesUserEventLogger
+
+    @Binds
+    @Singleton
+    abstract fun bindUserEventLogger(impl: ThemesUserEventLoggerImpl): UserEventLogger
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperModelFactory(
+        impl: DefaultWallpaperModelFactory
+    ): WallpaperModelFactory
 
     @Binds
     @Singleton
@@ -100,11 +145,24 @@ abstract class ThemePickerAppModule {
         impl: DefaultCustomizationPreferences
     ): WallpaperPreferences
 
-    @Binds
-    @Singleton
-    abstract fun bindClockPickerRepository(impl: ClockPickerRepositoryImpl): ClockPickerRepository
-
     companion object {
+
+        @Provides
+        @Singleton
+        fun provideClockRegistry(
+            @ApplicationContext context: Context,
+            @MainDispatcher mainScope: CoroutineScope,
+            @MainDispatcher mainDispatcher: CoroutineDispatcher,
+            @BackgroundDispatcher bgDispatcher: CoroutineDispatcher,
+        ): ClockRegistry {
+            return ClockRegistryProvider(
+                    context = context,
+                    coroutineScope = mainScope,
+                    mainDispatcher = mainDispatcher,
+                    backgroundDispatcher = bgDispatcher,
+                )
+                .get()
+        }
 
         @Provides
         @Singleton
@@ -134,19 +192,11 @@ abstract class ThemePickerAppModule {
 
         @Provides
         @Singleton
-        fun provideClockRegistry(
+        fun provideSystemSettingsRepository(
             @ApplicationContext context: Context,
-            @MainDispatcher mainScope: CoroutineScope,
-            @MainDispatcher mainDispatcher: CoroutineDispatcher,
             @BackgroundDispatcher bgDispatcher: CoroutineDispatcher,
-        ): ClockRegistry {
-            return ClockRegistryProvider(
-                    context = context,
-                    coroutineScope = mainScope,
-                    mainDispatcher = mainDispatcher,
-                    backgroundDispatcher = bgDispatcher,
-                )
-                .get()
+        ): SystemSettingsRepository {
+            return SystemSettingsRepositoryImpl(context.contentResolver, bgDispatcher)
         }
     }
 }
