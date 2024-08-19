@@ -20,14 +20,16 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:paddingHorizontal="@dimen/customization_option_entry_horizontal_padding"
+    android:paddingVertical="@dimen/customization_option_entry_vertical_padding_large"
     android:clickable="true">
 
     <TextView
-        style="@style/SectionTitleTextStyle"
+        style="@style/CustomizationOptionEntryTitleTextStyle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="@string/show_notifications_on_lock_screen"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="@dimen/customization_option_entry_text_margin_end"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/option_entry_show_notifications_switch"
         app:layout_constraintBottom_toBottomOf="parent"
