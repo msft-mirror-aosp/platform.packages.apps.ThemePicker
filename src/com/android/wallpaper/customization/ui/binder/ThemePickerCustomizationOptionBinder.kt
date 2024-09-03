@@ -17,17 +17,24 @@
 package com.android.wallpaper.customization.ui.binder
 
 import android.view.View
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.themepicker.R
 import com.android.wallpaper.customization.ui.util.ThemePickerCustomizationOptionUtil.ThemePickerHomeCustomizationOption
 import com.android.wallpaper.customization.ui.util.ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption
 import com.android.wallpaper.customization.ui.viewmodel.ThemePickerCustomizationOptionsViewModel
+import com.android.wallpaper.picker.common.icon.ui.viewbinder.IconViewBinder
+import com.android.wallpaper.picker.common.text.ui.viewbinder.TextViewBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
-import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
+import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
+import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.launch
@@ -43,8 +50,9 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
         lockScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
         homeScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
         customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>?,
-        viewModel: CustomizationOptionsViewModel,
-        lifecycleOwner: LifecycleOwner
+        viewModel: CustomizationPickerViewModel2,
+        colorUpdateViewModel: ColorUpdateViewModel,
+        lifecycleOwner: LifecycleOwner,
     ) {
         defaultCustomizationOptionsBinder.bind(
             view,
@@ -52,39 +60,86 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             homeScreenCustomizationOptionEntries,
             customizationOptionFloatingSheetViewMap,
             viewModel,
-            lifecycleOwner
+            colorUpdateViewModel,
+            lifecycleOwner,
         )
 
         val optionClock =
             lockScreenCustomizationOptionEntries
                 .find { it.first == ThemePickerLockCustomizationOption.CLOCK }
                 ?.second
+
         val optionShortcut =
             lockScreenCustomizationOptionEntries
                 .find { it.first == ThemePickerLockCustomizationOption.SHORTCUTS }
                 ?.second
+        val optionShortcutDescription =
+            optionShortcut?.findViewById<TextView>(
+                R.id.option_entry_keyguard_quick_affordance_description
+            )
+        val optionShortcutIcon1 =
+            optionShortcut?.findViewById<ImageView>(
+                R.id.option_entry_keyguard_quick_affordance_icon_1
+            )
+        val optionShortcutIcon2 =
+            optionShortcut?.findViewById<ImageView>(
+                R.id.option_entry_keyguard_quick_affordance_icon_2
+            )
+
         val optionColors =
             homeScreenCustomizationOptionEntries
                 .find { it.first == ThemePickerHomeCustomizationOption.COLORS }
                 ?.second
-        viewModel as ThemePickerCustomizationOptionsViewModel
 
+        val optionsViewModel =
+            viewModel.customizationOptionsViewModel as ThemePickerCustomizationOptionsViewModel
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.onCustomizeClockClicked.collect {
+                    optionsViewModel.onCustomizeClockClicked.collect {
                         optionClock?.setOnClickListener { _ -> it?.invoke() }
                     }
                 }
 
                 launch {
-                    viewModel.onCustomizeShortcutClicked.collect {
+                    optionsViewModel.onCustomizeShortcutClicked.collect {
                         optionShortcut?.setOnClickListener { _ -> it?.invoke() }
                     }
                 }
 
                 launch {
-                    viewModel.onCustomizeColorsClicked.collect {
+                    optionsViewModel.keyguardQuickAffordancePickerViewModel2.summary.collect {
+                        summary ->
+                        optionShortcutDescription?.let {
+                            TextViewBinder.bind(
+                                view = it,
+                                viewModel = summary.description,
+                            )
+                        }
+                        summary.icon1?.let { icon ->
+                            optionShortcutIcon1?.let {
+                                IconViewBinder.bind(
+                                    view = it,
+                                    viewModel = icon,
+                                )
+                            }
+                        }
+                        optionShortcutIcon1?.isVisible = summary.icon1 != null
+
+                        summary.icon2?.let { icon ->
+                            optionShortcutIcon2?.let {
+                                IconViewBinder.bind(
+                                    view = it,
+                                    viewModel = icon,
+                                )
+                            }
+                        }
+                        optionShortcutIcon2?.isVisible = summary.icon2 != null
+                    }
+                }
+
+                launch {
+                    optionsViewModel.onCustomizeColorsClicked.collect {
                         optionColors?.setOnClickListener { _ -> it?.invoke() }
                     }
                 }
@@ -96,7 +151,8 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             ?.let {
                 ClockFloatingSheetBinder.bind(
                     it,
-                    viewModel.clockPickerViewModel,
+                    optionsViewModel,
+                    colorUpdateViewModel,
                     lifecycleOwner,
                 )
             }
@@ -106,7 +162,8 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             ?.let {
                 ShortcutFloatingSheetBinder.bind(
                     it,
-                    viewModel.keyguardQuickAffordancePickerViewModel2,
+                    optionsViewModel,
+                    colorUpdateViewModel,
                     lifecycleOwner,
                 )
             }
@@ -116,7 +173,8 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             ?.let {
                 ColorsFloatingSheetBinder.bind(
                     it,
-                    viewModel.colorPickerViewModel2,
+                    optionsViewModel,
+                    colorUpdateViewModel,
                     lifecycleOwner,
                 )
             }

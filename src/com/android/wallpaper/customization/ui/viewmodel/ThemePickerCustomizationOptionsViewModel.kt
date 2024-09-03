@@ -48,7 +48,10 @@ constructor(
 
     override val selectedOption = defaultCustomizationOptionsViewModel.selectedOption
 
-    override fun deselectOption(): Boolean = defaultCustomizationOptionsViewModel.deselectOption()
+    override fun deselectOption(): Boolean {
+        keyguardQuickAffordancePickerViewModel2.resetPreview()
+        return defaultCustomizationOptionsViewModel.deselectOption()
+    }
 
     val onCustomizeClockClicked: Flow<(() -> Unit)?> =
         selectedOption.map {
