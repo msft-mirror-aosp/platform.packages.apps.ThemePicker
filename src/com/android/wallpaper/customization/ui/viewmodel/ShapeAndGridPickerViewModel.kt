@@ -49,14 +49,8 @@ constructor(
     // The currently-set system grid option
     val selectedGridOption =
         interactor.selectedGridOption.filterNotNull().map { toOptionItemViewModel(it) }
-    private val _previewingGridOptionKey = MutableStateFlow<String?>(null)
-    // If the previewing key is null, use the currently-set system grid option
-    val previewingGridOptionKey =
-        combine(selectedGridOption, _previewingGridOptionKey) {
-            currentlySetGridOption,
-            previewingGridOptionKey ->
-            previewingGridOptionKey ?: currentlySetGridOption.key.value
-        }
+
+    private val overrideGridOptionKey = MutableStateFlow<String?>(null)
 
     val optionItems: Flow<List<OptionItemViewModel<GridIconViewModel>>> =
         interactor.gridOptions.filterNotNull().map { gridOptions ->
@@ -64,20 +58,16 @@ constructor(
         }
 
     val onApply: Flow<(() -> Unit)?> =
-        combine(selectedGridOption, _previewingGridOptionKey) {
+        combine(selectedGridOption, overrideGridOptionKey) {
             selectedGridOption,
-            previewingGridOptionKey ->
+            overrideGridOptionKey ->
             if (
-                previewingGridOptionKey == null ||
-                    previewingGridOptionKey == selectedGridOption.key.value
+                overrideGridOptionKey == null ||
+                    overrideGridOptionKey == selectedGridOption.key.value
             ) {
                 null
             } else {
-                {
-                    viewModelScope.launch {
-                        interactor.applySelectedOption(previewingGridOptionKey)
-                    }
-                }
+                { viewModelScope.launch { interactor.applySelectedOption(overrideGridOptionKey) } }
             }
         }
 
@@ -96,7 +86,7 @@ constructor(
                     )
             )
         val isSelected =
-            _previewingGridOptionKey
+            overrideGridOptionKey
                 .map {
                     if (it == null) {
                         option.isCurrent
@@ -123,7 +113,7 @@ constructor(
             onClicked =
                 isSelected.map {
                     if (!it) {
-                        { _previewingGridOptionKey.value = option.key }
+                        { overrideGridOptionKey.value = option.key }
                     } else {
                         null
                     }
