@@ -40,19 +40,16 @@ class NotificationsSnapshotRestorer(
         store: SnapshotStore,
     ): RestorableSnapshot {
         snapshotStore = store
-        // The initial snapshot should be returned and stored before storing additional snapshots.
-        return snapshot(
-                NotificationSnapshotModel(interactor.isShowNotificationsOnLockScreenEnabled().value)
-            )
-            .also {
-                backgroundScope.launch {
-                    interactor.isShowNotificationsOnLockScreenEnabled().collect {
-                        storeSnapshot(
-                            NotificationSnapshotModel(isShowNotificationsOnLockScreenEnabled = it)
-                        )
-                    }
-                }
+        backgroundScope.launch {
+            interactor.isShowNotificationsOnLockScreenEnabled.collect {
+                storeSnapshot(
+                    NotificationSnapshotModel(isShowNotificationsOnLockScreenEnabled = it)
+                )
             }
+        }
+        return snapshot(
+            NotificationSnapshotModel(interactor.isShowNotificationsOnLockScreenEnabled.value)
+        )
     }
 
     override suspend fun restoreToSnapshot(snapshot: RestorableSnapshot) {
