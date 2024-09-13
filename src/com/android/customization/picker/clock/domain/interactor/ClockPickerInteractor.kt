@@ -47,6 +47,8 @@ constructor(
     val selectedClockId: Flow<String> =
         repository.selectedClock.map { clock -> clock.clockId }.distinctUntilChanged()
 
+    val selectedClock: Flow<ClockMetadataModel> = repository.selectedClock
+
     val selectedColorId: Flow<String?> =
         repository.selectedClock.map { clock -> clock.selectedColorId }.distinctUntilChanged()
 
@@ -82,6 +84,24 @@ constructor(
         setClockOption(ClockSnapshotModel(clockSize = size))
     }
 
+    suspend fun applyClock(
+        clockId: String?,
+        size: ClockSize?,
+        selectedColorId: String?,
+        @IntRange(from = 0, to = 100) colorToneProgress: Int?,
+        @ColorInt seedColor: Int?,
+    ) {
+        setClockOption(
+            ClockSnapshotModel(
+                clockId = clockId,
+                clockSize = size,
+                selectedColorId = selectedColorId,
+                colorToneProgress = colorToneProgress,
+                seedColor = seedColor,
+            )
+        )
+    }
+
     private suspend fun setClockOption(clockSnapshotModel: ClockSnapshotModel) {
         // [ClockCarouselViewModel] is monitoring the [ClockPickerInteractor.setSelectedClock] job,
         // so it needs to finish last.
@@ -92,7 +112,7 @@ constructor(
             repository.setClockColor(
                 selectedColorId = clockSnapshotModel.selectedColorId,
                 colorToneProgress = clockSnapshotModel.colorToneProgress,
-                seedColor = clockSnapshotModel.seedColor
+                seedColor = clockSnapshotModel.seedColor,
             )
         }
         clockSnapshotModel.clockId?.let { repository.setSelectedClock(it) }
