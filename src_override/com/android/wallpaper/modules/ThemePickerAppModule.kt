@@ -36,6 +36,7 @@ import com.android.systemui.shared.settings.data.repository.SecureSettingsReposi
 import com.android.systemui.shared.settings.data.repository.SystemSettingsRepository
 import com.android.systemui.shared.settings.data.repository.SystemSettingsRepositoryImpl
 import com.android.wallpaper.customization.ui.binder.ThemePickerCustomizationOptionsBinder
+import com.android.wallpaper.customization.ui.binder.ThemePickerToolbarBinder
 import com.android.wallpaper.effects.DefaultEffectsController
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.module.DefaultPartnerProvider
@@ -50,7 +51,12 @@ import com.android.wallpaper.picker.category.domain.interactor.implementations.C
 import com.android.wallpaper.picker.category.domain.interactor.implementations.DefaultCategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
 import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
+import com.android.wallpaper.picker.category.wrapper.DefaultWallpaperCategoryWrapper
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper
+import com.android.wallpaper.picker.common.preview.ui.binder.ThemePickerWorkspaceCallbackBinder
+import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
+import com.android.wallpaper.picker.customization.ui.binder.ToolbarBinder
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
@@ -82,8 +88,14 @@ abstract class ThemePickerAppModule {
     @Binds
     @Singleton
     abstract fun bindCreativeCategoryInteractor(
-        impl: CreativeCategoryInteractorImpl,
+        impl: CreativeCategoryInteractorImpl
     ): CreativeCategoryInteractor
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperCategoryWrapper(
+        impl: DefaultWallpaperCategoryWrapper
+    ): WallpaperCategoryWrapper
 
     @Binds
     @Singleton
@@ -118,7 +130,7 @@ abstract class ThemePickerAppModule {
     @Binds
     @Singleton
     abstract fun bindLoadingStatusInteractor(
-        impl: DefaultCategoriesLoadingStatusInteractor,
+        impl: DefaultCategoriesLoadingStatusInteractor
     ): CategoriesLoadingStatusInteractor
 
     @Binds
@@ -128,6 +140,8 @@ abstract class ThemePickerAppModule {
     @Binds
     @Singleton
     abstract fun bindThemesUserEventLogger(impl: ThemesUserEventLoggerImpl): ThemesUserEventLogger
+
+    @Binds @Singleton abstract fun bindToolbarBinder(impl: ThemePickerToolbarBinder): ToolbarBinder
 
     @Binds
     @Singleton
@@ -144,6 +158,12 @@ abstract class ThemePickerAppModule {
     abstract fun bindWallpaperPreferences(
         impl: DefaultCustomizationPreferences
     ): WallpaperPreferences
+
+    @Binds
+    @Singleton
+    abstract fun bindWorkspaceCallbackBinder(
+        impl: ThemePickerWorkspaceCallbackBinder
+    ): WorkspaceCallbackBinder
 
     companion object {
 

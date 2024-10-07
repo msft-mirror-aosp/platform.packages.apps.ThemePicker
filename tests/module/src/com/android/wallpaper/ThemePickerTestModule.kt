@@ -35,6 +35,7 @@ import com.android.systemui.shared.customization.data.content.CustomizationProvi
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepository
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepositoryImpl
+import com.android.wallpaper.customization.ui.binder.ThemePickerToolbarBinder
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.effects.FakeEffectsController
 import com.android.wallpaper.module.Injector
@@ -44,13 +45,18 @@ import com.android.wallpaper.module.logging.TestUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.modules.ThemePickerAppModule
 import com.android.wallpaper.network.Requester
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper
+import com.android.wallpaper.picker.common.preview.ui.binder.ThemePickerWorkspaceCallbackBinder
+import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
+import com.android.wallpaper.picker.customization.ui.binder.ToolbarBinder
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.testing.FakeDefaultRequester
+import com.android.wallpaper.testing.FakeWallpaperCategoryWrapper
 import com.android.wallpaper.testing.TestPartnerProvider
 import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
 import com.android.wallpaper.util.converter.WallpaperModelFactory
@@ -98,6 +104,12 @@ abstract class ThemePickerTestModule {
 
     @Binds
     @Singleton
+    abstract fun bindWallpaperCategoryWrapper(
+        impl: FakeWallpaperCategoryWrapper
+    ): WallpaperCategoryWrapper
+
+    @Binds
+    @Singleton
     abstract fun bindImageEffectDialogUtil(
         impl: DefaultImageEffectDialogUtil
     ): ImageEffectDialogUtil
@@ -114,6 +126,8 @@ abstract class ThemePickerTestModule {
     @Singleton
     abstract fun bindThemesUserEventLogger(impl: TestThemesUserEventLogger): ThemesUserEventLogger
 
+    @Binds @Singleton abstract fun bindToolbarBinder(impl: ThemePickerToolbarBinder): ToolbarBinder
+
     @Binds @Singleton abstract fun bindUserEventLogger(impl: TestUserEventLogger): UserEventLogger
 
     @Binds
@@ -127,6 +141,12 @@ abstract class ThemePickerTestModule {
     abstract fun bindWallpaperPreferences(
         impl: TestDefaultCustomizationPreferences
     ): WallpaperPreferences
+
+    @Binds
+    @Singleton
+    abstract fun bindWorkspaceCallbackBinder(
+        impl: ThemePickerWorkspaceCallbackBinder
+    ): WorkspaceCallbackBinder
 
     companion object {
 
@@ -152,7 +172,7 @@ abstract class ThemePickerTestModule {
         fun provideColorCustomizationManager(): ColorCustomizationManager {
             return ColorCustomizationManager.getInstance(
                 ApplicationProvider.getApplicationContext(),
-                OverlayManagerCompat(ApplicationProvider.getApplicationContext())
+                OverlayManagerCompat(ApplicationProvider.getApplicationContext()),
             )
         }
 
