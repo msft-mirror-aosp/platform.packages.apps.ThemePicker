@@ -21,8 +21,8 @@ import android.content.res.Resources
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.filters.SmallTest
 import com.android.customization.model.ResourceConstants
-import com.android.customization.model.grid.FakeGridOptionsManager
-import com.android.customization.picker.grid.domain.interactor.GridInteractor2
+import com.android.customization.model.grid.FakeShapeGridManager
+import com.android.customization.picker.grid.domain.interactor.ShapeGridInteractor
 import com.android.customization.picker.grid.ui.viewmodel.GridIconViewModel
 import com.android.customization.picker.grid.ui.viewmodel.ShapeIconViewModel
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
@@ -53,8 +53,8 @@ class ShapeGridPickerViewModelTest {
 
     @get:Rule var hiltRule = HiltAndroidRule(this)
     @Inject lateinit var testScope: TestScope
-    @Inject lateinit var gridOptionsManager: FakeGridOptionsManager
-    @Inject lateinit var interactor: GridInteractor2
+    @Inject lateinit var gridOptionsManager: FakeShapeGridManager
+    @Inject lateinit var interactor: ShapeGridInteractor
     @Inject @ApplicationContext lateinit var appContext: Context
 
     private val iconShapePath =

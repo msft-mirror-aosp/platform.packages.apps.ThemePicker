@@ -20,7 +20,7 @@ import android.content.Context
 import android.content.res.Resources
 import com.android.customization.model.ResourceConstants
 import com.android.customization.model.grid.GridOptionModel
-import com.android.customization.picker.grid.domain.interactor.GridInteractor2
+import com.android.customization.picker.grid.domain.interactor.ShapeGridInteractor
 import com.android.customization.picker.grid.ui.viewmodel.GridIconViewModel
 import com.android.customization.picker.grid.ui.viewmodel.ShapeIconViewModel
 import com.android.themepicker.R
@@ -50,7 +50,7 @@ class ShapeGridPickerViewModel
 @AssistedInject
 constructor(
     @ApplicationContext private val context: Context,
-    interactor: GridInteractor2,
+    interactor: ShapeGridInteractor,
     @Assisted private val viewModelScope: CoroutineScope,
 ) {
 
