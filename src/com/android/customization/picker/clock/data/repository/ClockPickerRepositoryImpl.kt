@@ -22,6 +22,7 @@ import androidx.annotation.ColorInt
 import androidx.annotation.IntRange
 import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
+import com.android.systemui.plugins.clocks.ClockFontAxis
 import com.android.systemui.plugins.clocks.ClockMetadata
 import com.android.systemui.shared.clocks.ClockRegistry
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepository
@@ -70,6 +71,7 @@ constructor(
                                     description = clockConfig.description,
                                     thumbnail = clockConfig.thumbnail,
                                     isReactiveToTone = clockConfig.isReactiveToTone,
+                                    axes = clockConfig.axes,
                                 )
                             } else {
                                 null
@@ -115,6 +117,7 @@ constructor(
                                     description = it.description,
                                     thumbnail = it.thumbnail,
                                     isReactiveToTone = it.isReactiveToTone,
+                                    axes = it.axes,
                                     selectedColorId = metadata?.getSelectedColorId(),
                                     colorTone =
                                         metadata?.getColorTone()
@@ -174,11 +177,7 @@ constructor(
             .map { setting -> setting == 1 }
             .map { isDynamic -> if (isDynamic) ClockSize.DYNAMIC else ClockSize.SMALL }
             .distinctUntilChanged()
-            .shareIn(
-                scope = mainScope,
-                started = SharingStarted.Eagerly,
-                replay = 1,
-            )
+            .shareIn(scope = mainScope, started = SharingStarted.Eagerly, replay = 1)
 
     override suspend fun setClockSize(size: ClockSize) {
         secureSettingsRepository.setInt(
@@ -198,7 +197,7 @@ constructor(
     private fun JSONObject.getColorTone(): Int {
         return this.optInt(
             KEY_METADATA_COLOR_TONE_PROGRESS,
-            ClockMetadataModel.DEFAULT_COLOR_TONE_PROGRESS
+            ClockMetadataModel.DEFAULT_COLOR_TONE_PROGRESS,
         )
     }
 
@@ -208,6 +207,7 @@ constructor(
         description: String,
         thumbnail: Drawable,
         isReactiveToTone: Boolean,
+        axes: List<ClockFontAxis>,
         selectedColorId: String? = null,
         @IntRange(from = 0, to = 100) colorTone: Int = 0,
         @ColorInt seedColor: Int? = null,
@@ -218,6 +218,7 @@ constructor(
             description = description,
             thumbnail = thumbnail,
             isReactiveToTone = isReactiveToTone,
+            axes = axes,
             selectedColorId = selectedColorId,
             colorToneProgress = colorTone,
             seedColor = seedColor,
