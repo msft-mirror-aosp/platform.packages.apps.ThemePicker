@@ -49,15 +49,17 @@ constructor(
                             while (cursor.moveToNext()) {
                                 val rows = cursor.getInt(cursor.getColumnIndex(COL_ROWS))
                                 val cols = cursor.getInt(cursor.getColumnIndex(COL_COLS))
+                                val title =
+                                    cursor.getString(cursor.getColumnIndex(COL_GRID_TITLE))
+                                        ?: context.getString(
+                                            com.android.themepicker.R.string.grid_title_pattern,
+                                            cols,
+                                            rows,
+                                        )
                                 add(
                                     GridOptionModel(
                                         key = cursor.getString(cursor.getColumnIndex(COL_GRID_KEY)),
-                                        title =
-                                            context.getString(
-                                                com.android.themepicker.R.string.grid_title_pattern,
-                                                cols,
-                                                rows,
-                                            ),
+                                        title = title,
                                         isCurrent =
                                             cursor
                                                 .getString(cursor.getColumnIndex(COL_IS_DEFAULT))
@@ -86,7 +88,10 @@ constructor(
                                     ShapeOptionModel(
                                         key =
                                             cursor.getString(cursor.getColumnIndex(COL_SHAPE_KEY)),
-                                        title = cursor.getString(cursor.getColumnIndex(COL_TITLE)),
+                                        title =
+                                            cursor.getString(
+                                                cursor.getColumnIndex(COL_SHAPE_TITLE)
+                                            ),
                                         path = cursor.getString(cursor.getColumnIndex(COL_PATH)),
                                         isCurrent =
                                             cursor
@@ -116,14 +121,16 @@ constructor(
 
     companion object {
         const val SHAPE_OPTIONS: String = "shape_options"
-        const val GRID_OPTIONS: String = "grid_options"
+        const val GRID_OPTIONS: String = "list_options"
         const val SHAPE_GRID: String = "default_grid"
         const val COL_SHAPE_KEY: String = "shape_key"
         const val COL_GRID_KEY: String = "name"
+        const val COL_GRID_NAME: String = "grid_name"
+        const val COL_GRID_TITLE: String = "grid_title"
+        const val COL_SHAPE_TITLE: String = "shape_title"
         const val COL_ROWS: String = "rows"
         const val COL_COLS: String = "cols"
         const val COL_IS_DEFAULT: String = "is_default"
-        const val COL_TITLE: String = "title"
         const val COL_PATH: String = "path"
     }
 }
