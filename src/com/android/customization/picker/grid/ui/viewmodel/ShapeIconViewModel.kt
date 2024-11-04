@@ -14,13 +14,6 @@
  * limitations under the License.
  */
 
-package com.android.customization.model.grid
+package com.android.customization.picker.grid.ui.viewmodel
 
-interface GridOptionsManager2 {
-
-    suspend fun isGridOptionAvailable(): Boolean
-
-    suspend fun getGridOptions(): List<GridOptionModel>?
-
-    fun applyGridOption(gridName: String): Int
-}
+data class ShapeIconViewModel(val key: String, val path: String)

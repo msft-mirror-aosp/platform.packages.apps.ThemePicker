@@ -16,6 +16,7 @@
 
 package com.android.wallpaper.customization.ui.viewmodel
 
+import com.android.customization.picker.mode.ui.viewmodel.DarkModeViewModel
 import com.android.wallpaper.customization.ui.util.ThemePickerCustomizationOptionUtil
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModelFactory
@@ -28,10 +29,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class ThemePickerCustomizationOptionsViewModel
 @AssistedInject
@@ -40,7 +43,8 @@ constructor(
     keyguardQuickAffordancePickerViewModel2Factory: KeyguardQuickAffordancePickerViewModel2.Factory,
     colorPickerViewModel2Factory: ColorPickerViewModel2.Factory,
     clockPickerViewModelFactory: ClockPickerViewModel.Factory,
-    shapeAndGridPickerViewModelFactory: ShapeAndGridPickerViewModel.Factory,
+    shapeGridPickerViewModelFactory: ShapeGridPickerViewModel.Factory,
+    val darkModeViewModel: DarkModeViewModel,
     @Assisted private val viewModelScope: CoroutineScope,
 ) : CustomizationOptionsViewModel {
 
@@ -51,16 +55,25 @@ constructor(
     val keyguardQuickAffordancePickerViewModel2 =
         keyguardQuickAffordancePickerViewModel2Factory.create(viewModelScope = viewModelScope)
     val colorPickerViewModel2 = colorPickerViewModel2Factory.create(viewModelScope = viewModelScope)
-    val shapeAndGridPickerViewModel =
-        shapeAndGridPickerViewModelFactory.create(viewModelScope = viewModelScope)
+    val shapeGridPickerViewModel =
+        shapeGridPickerViewModelFactory.create(viewModelScope = viewModelScope)
 
     override val selectedOption = defaultCustomizationOptionsViewModel.selectedOption
 
-    override fun deselectOption(): Boolean {
-        keyguardQuickAffordancePickerViewModel2.resetPreview()
-        shapeAndGridPickerViewModel.resetPreview()
+    override fun handleBackPressed(): Boolean {
+        val isBackPressedHandled = defaultCustomizationOptionsViewModel.handleBackPressed()
 
-        return defaultCustomizationOptionsViewModel.deselectOption()
+        if (isBackPressedHandled) {
+            // If isBackPressedHandled is handled by DefaultCustomizationOptionsViewModel, it means
+            // we navigate back to the main screen from a secondary screen. Reset preview.
+            keyguardQuickAffordancePickerViewModel2.resetPreview()
+            shapeGridPickerViewModel.resetPreview()
+            clockPickerViewModel.resetPreview()
+            colorPickerViewModel2.resetPreview()
+            darkModeViewModel.resetPreview()
+        }
+
+        return isBackPressedHandled
     }
 
     val onCustomizeClockClicked: Flow<(() -> Unit)?> =
@@ -103,13 +116,13 @@ constructor(
             }
         }
 
-    val onCustomizeShapeAndGridClicked: Flow<(() -> Unit)?> =
+    val onCustomizeShapeGridClicked: Flow<(() -> Unit)?> =
         selectedOption.map {
             if (it == null) {
                 {
                     defaultCustomizationOptionsViewModel.selectOption(
                         ThemePickerCustomizationOptionUtil.ThemePickerHomeCustomizationOption
-                            .APP_SHAPE_AND_GRID
+                            .APP_SHAPE_GRID
                     )
                 }
             } else {
@@ -118,15 +131,38 @@ constructor(
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val onApplyButtonClicked =
+    val onApplyButtonClicked: Flow<((onComplete: () -> Unit) -> Unit)?> =
         selectedOption
             .flatMapLatest {
                 when (it) {
+                    ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption.CLOCK ->
+                        clockPickerViewModel.onApply
                     ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption
                         .SHORTCUTS -> keyguardQuickAffordancePickerViewModel2.onApply
                     ThemePickerCustomizationOptionUtil.ThemePickerHomeCustomizationOption
-                        .APP_SHAPE_AND_GRID -> shapeAndGridPickerViewModel.onApply
+                        .APP_SHAPE_GRID -> shapeGridPickerViewModel.onApply
+                    ThemePickerCustomizationOptionUtil.ThemePickerHomeCustomizationOption.COLORS ->
+                        combine(colorPickerViewModel2.onApply, darkModeViewModel.onApply) {
+                            colorOnApply,
+                            darkModeOnApply ->
+                            {
+                                colorOnApply?.invoke()
+                                darkModeOnApply?.invoke()
+                            }
+                        }
                     else -> flow { emit(null) }
+                }
+            }
+            .map { onApply ->
+                if (onApply != null) {
+                    fun(onComplete: () -> Unit) {
+                        viewModelScope.launch {
+                            onApply()
+                            onComplete()
+                        }
+                    }
+                } else {
+                    null
                 }
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
