@@ -234,6 +234,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
     override fun bindClockPreview(
         clockHostView: View,
         viewModel: CustomizationPickerViewModel2,
+        colorUpdateViewModel: ColorUpdateViewModel,
         lifecycleOwner: LifecycleOwner,
         clockViewFactory: ClockViewFactory,
     ) {
@@ -278,12 +279,12 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                             clockPickerViewModel.previewingSeedColor,
                             clockPickerViewModel.previewingClock,
                             clockPickerViewModel.previewingFontAxisMap,
-                            ::Triple,
+                            colorUpdateViewModel.systemColorsUpdated,
+                            ::Quadruple,
                         )
-                        .collect { triple ->
-                            val (color, clock, axisMap) = triple
+                        .collect { quadruple ->
+                            val (color, clock, axisMap, _) = quadruple
                             clockViewFactory.updateColor(clock.clockId, color)
-
                             val axisList = axisMap.map { ClockFontAxisSetting(it.key, it.value) }
                             clockViewFactory.updateFontAxes(clock.clockId, axisList)
                         }
@@ -291,4 +292,6 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             }
         }
     }
+
+    data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 }
