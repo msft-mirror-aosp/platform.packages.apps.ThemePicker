@@ -41,7 +41,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
-import kotlin.collections.map
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -167,7 +166,7 @@ constructor(
                     } else {
                         fun() {
                             overridingClock.value = this
-                            overrideFontAxisMap.value = null
+                            overrideClockFontAxisMap.value = null
                         }
                     }
                 },
@@ -175,27 +174,33 @@ constructor(
     }
 
     // Clock Font Axis Editor
-    private val overrideFontAxisMap = MutableStateFlow<Map<String, Float>?>(null)
-    private val isFontAxisMapEdited = overrideFontAxisMap.map { it != null }
-    private val selectedClockFontAxes =
+    private val overrideClockFontAxisMap = MutableStateFlow<Map<String, Float>?>(null)
+    private val isFontAxisMapEdited = overrideClockFontAxisMap.map { it != null }
+    val selectedClockFontAxes =
         previewingClock
-            .map { clock -> clock.fontAxes.associate { it.key to it.currentValue } }
+            .map { clock -> clock.fontAxes }
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    val previewingFontAxisMap =
-        combine(overrideFontAxisMap, selectedClockFontAxes.filterNotNull()) {
-                overrideAxes,
-                selectedFontAxes ->
-                selectedFontAxes.toMutableMap().let { mutableMap ->
-                    overrideAxes?.forEach { (key, value) -> mutableMap[key] = value }
+    private val selectedClockFontAxisMap =
+        selectedClockFontAxes
+            .filterNotNull()
+            .map { fontAxes -> fontAxes.associate { it.key to it.currentValue } }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val previewingClockFontAxisMap =
+        combine(overrideClockFontAxisMap, selectedClockFontAxisMap.filterNotNull()) {
+                overrideAxisMap,
+                selectedAxisMap ->
+                overrideAxisMap?.let {
+                    val mutableMap = selectedAxisMap.toMutableMap()
+                    overrideAxisMap.forEach { (key, value) -> mutableMap[key] = value }
                     mutableMap.toMap()
-                }
+                } ?: selectedAxisMap
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     fun updatePreviewFontAxis(key: String, value: Float) {
-        val axisMap = (overrideFontAxisMap.value?.toMutableMap() ?: mutableMapOf())
+        val axisMap = (overrideClockFontAxisMap.value?.toMutableMap() ?: mutableMapOf())
         axisMap[key] = value
-        overrideFontAxisMap.value = axisMap.toMap()
+        overrideClockFontAxisMap.value = axisMap.toMap()
     }
 
     fun confirmFontAxes() {
@@ -203,7 +208,7 @@ constructor(
     }
 
     fun cancelFontAxes() {
-        overrideFontAxisMap.value = null
+        overrideClockFontAxisMap.value = null
         _selectedTab.value = Tab.STYLE
     }
 
@@ -420,7 +425,7 @@ constructor(
             previewingClockSize,
             previewingClockColorId,
             previewingSliderProgress,
-            previewingFontAxisMap,
+            previewingClockFontAxisMap,
         ) { array ->
             val isEdited = array[0] as Boolean
             val clock = array[1] as ClockMetadataModel
@@ -455,7 +460,7 @@ constructor(
         overridingClockSize.value = null
         overridingClockColorId.value = null
         overridingSliderProgress.value = null
-        overrideFontAxisMap.value = null
+        overrideClockFontAxisMap.value = null
         _selectedTab.value = Tab.STYLE
     }
 
