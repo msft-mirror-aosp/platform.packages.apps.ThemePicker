@@ -33,10 +33,6 @@ import com.android.systemui.shared.customization.data.content.FakeCustomizationP
 import com.android.systemui.shared.keyguard.shared.model.KeyguardQuickAffordanceSlots
 import com.android.themepicker.R
 import com.android.wallpaper.module.InjectorProvider
-import com.android.wallpaper.module.NetworkStatusNotifier
-import com.android.wallpaper.module.PartnerProvider
-import com.android.wallpaper.module.WallpaperPreferences
-import com.android.wallpaper.network.Requester
 import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
@@ -48,8 +44,6 @@ import com.android.wallpaper.testing.TestCurrentWallpaperInfoFactory
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.testing.collectLastValue
-import com.android.wallpaper.util.DisplayUtils
-import com.android.wallpaper.util.DisplaysProvider
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.Dispatchers
@@ -64,7 +58,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mockito.mock
 import org.robolectric.RobolectricTestRunner
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -84,6 +77,7 @@ class KeyguardQuickAffordancePickerViewModelTest {
 
     @Before
     fun setUp() {
+        InjectorProvider.setInjector(TestInjector(logger))
         context = ApplicationProvider.getApplicationContext()
         val testDispatcher = StandardTestDispatcher()
         testScope = TestScope(testDispatcher)
@@ -114,20 +108,8 @@ class KeyguardQuickAffordancePickerViewModelTest {
                         client = FakeWallpaperClient(),
                         wallpaperPreferences = TestWallpaperPreferences(),
                         backgroundDispatcher = testDispatcher,
-                    )
+                    ),
             )
-        InjectorProvider.setInjector(
-            TestInjector(
-                logger,
-                DisplayUtils(context, mock(DisplaysProvider::class.java)),
-                mock(Requester::class.java),
-                mock(NetworkStatusNotifier::class.java),
-                mock(PartnerProvider::class.java),
-                FakeWallpaperClient(),
-                wallpaperInteractor,
-                mock(WallpaperPreferences::class.java),
-            )
-        )
         underTest =
             KeyguardQuickAffordancePickerViewModel.Factory(
                     context = context,
@@ -374,12 +356,12 @@ class KeyguardQuickAffordancePickerViewModelTest {
                         icon1 =
                             Icon.Loaded(
                                 FakeCustomizationProviderClient.ICON_1,
-                                Text.Loaded("Left shortcut"),
+                                Text.Loaded("Left shortcut")
                             ),
                         icon2 =
                             Icon.Loaded(
                                 FakeCustomizationProviderClient.ICON_3,
-                                Text.Loaded("Right shortcut"),
+                                Text.Loaded("Right shortcut")
                             ),
                     )
                 )
@@ -402,7 +384,7 @@ class KeyguardQuickAffordancePickerViewModelTest {
                         icon1 =
                             Icon.Loaded(
                                 FakeCustomizationProviderClient.ICON_1,
-                                Text.Loaded("Left shortcut"),
+                                Text.Loaded("Left shortcut")
                             ),
                         icon2 = null,
                     )
@@ -430,7 +412,7 @@ class KeyguardQuickAffordancePickerViewModelTest {
                         icon2 =
                             Icon.Loaded(
                                 FakeCustomizationProviderClient.ICON_3,
-                                Text.Loaded("Right shortcut"),
+                                Text.Loaded("Right shortcut")
                             ),
                     )
                 )
@@ -491,7 +473,11 @@ class KeyguardQuickAffordancePickerViewModelTest {
         assertThat(affordances).isNotNull()
         affordances?.forEach { affordance ->
             val nameMatchesSelectedName =
-                Text.evaluationEquals(context, affordance.text, Text.Loaded(selectedAffordanceText))
+                Text.evaluationEquals(
+                    context,
+                    affordance.text,
+                    Text.Loaded(selectedAffordanceText),
+                )
             val isSelected: Boolean? = collectLastValue(affordance.isSelected).invoke()
             assertWithMessage(
                     "Expected affordance with name \"${affordance.text}\" to have" +
