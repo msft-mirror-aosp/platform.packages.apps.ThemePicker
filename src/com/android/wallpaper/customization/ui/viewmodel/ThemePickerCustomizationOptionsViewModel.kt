@@ -30,6 +30,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -61,6 +62,16 @@ constructor(
     override val selectedOption = defaultCustomizationOptionsViewModel.selectedOption
 
     override fun handleBackPressed(): Boolean {
+
+        if (
+            defaultCustomizationOptionsViewModel.selectedOption.value ==
+                ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption.CLOCK &&
+                clockPickerViewModel.selectedTab.value == ClockPickerViewModel.Tab.FONT
+        ) {
+            clockPickerViewModel.cancelFontAxes()
+            return true
+        }
+
         val isBackPressedHandled = defaultCustomizationOptionsViewModel.handleBackPressed()
 
         if (isBackPressedHandled) {
@@ -167,9 +178,17 @@ constructor(
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val isOnApplyEnabled: Flow<Boolean> = onApplyButtonClicked.map { it != null }
+    val isApplyButtonEnabled: Flow<Boolean> = onApplyButtonClicked.map { it != null }
 
-    val isOnApplyVisible: Flow<Boolean> = selectedOption.map { it != null }
+    val isApplyButtonVisible: Flow<Boolean> = selectedOption.map { it != null }
+
+    val isToolbarCollapsed: Flow<Boolean> =
+        combine(selectedOption, clockPickerViewModel.selectedTab) { selectedOption, selectedTab ->
+                selectedOption ==
+                    ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption.CLOCK &&
+                    selectedTab == ClockPickerViewModel.Tab.FONT
+            }
+            .distinctUntilChanged()
 
     @ViewModelScoped
     @AssistedFactory
