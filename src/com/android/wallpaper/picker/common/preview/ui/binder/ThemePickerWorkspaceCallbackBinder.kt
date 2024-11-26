@@ -159,13 +159,18 @@ constructor(
                         }
 
                         launch {
+                            colorUpdateViewModel.systemColorsUpdated.collect {
+                                viewModel.colorPickerViewModel2.onApplyComplete()
+                            }
+                        }
+
+                        launch {
                             combine(
                                     viewModel.colorPickerViewModel2.previewingColorOption,
                                     viewModel.darkModeViewModel.overridingIsDarkMode,
-                                    colorUpdateViewModel.systemColorsUpdated,
-                                    ::Triple,
+                                    ::Pair,
                                 )
-                                .collect { (colorModel, darkMode, _) ->
+                                .collect { (colorModel, darkMode) ->
                                     val bundle =
                                         Bundle().apply {
                                             if (colorModel != null) {
