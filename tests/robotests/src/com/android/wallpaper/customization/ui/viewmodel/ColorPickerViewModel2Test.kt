@@ -29,13 +29,14 @@ import com.android.customization.picker.color.shared.model.ColorType
 import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
 import com.android.systemui.monet.Style
 import com.android.wallpaper.picker.customization.ui.viewmodel.FloatingToolbarTabViewModel
-import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel2
 import com.android.wallpaper.testing.FakeSnapshotStore
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -94,6 +95,27 @@ class ColorPickerViewModel2Test {
     fun tearDown() {
         Dispatchers.resetMain()
     }
+
+    @Test
+    fun onApply_suspendsUntilOnApplyCompleteIsCalled() =
+        testScope.runTest {
+            val colorTypes = collectLastValue(underTest.colorTypeTabs)
+            val colorOptions = collectLastValue(underTest.colorOptions)
+            val onApply = collectLastValue(underTest.onApply)
+
+            // Select "Wallpaper colors" tab
+            colorTypes()?.get(0)?.onClick?.invoke()
+            // Select a color option to preview
+            selectColorOption(colorOptions, 1)
+            // Apply the selected color option
+            val job = testScope.launch { onApply()?.invoke() }
+
+            assertThat(job.isActive).isTrue()
+
+            underTest.onApplyComplete()
+
+            assertThat(job.isActive).isFalse()
+        }
 
     @Test
     fun onApply_wallpaperColor_shouldLogColor() =
@@ -203,9 +225,9 @@ class ColorPickerViewModel2Test {
             )
         }
 
-    /** Simulates a user selecting the affordance at the given index, if that is clickable. */
+    /** Simulates a user selecting the color option at the given index. */
     private fun TestScope.selectColorOption(
-        colorOptions: () -> List<OptionItemViewModel<ColorOptionIconViewModel>>?,
+        colorOptions: () -> List<OptionItemViewModel2<ColorOptionIconViewModel>>?,
         index: Int,
     ) {
         val onClickedFlow = colorOptions()?.get(index)?.onClicked
@@ -217,10 +239,11 @@ class ColorPickerViewModel2Test {
         }
     }
 
-    /** Simulates a user selecting the affordance at the given index, if that is clickable. */
+    /** Simulates a user applying the color option at the given index, and the apply completes. */
     private suspend fun TestScope.applySelectedColorOption() {
         val onApply = collectLastValue(underTest.onApply)()
-        onApply?.invoke()
+        testScope.launch { onApply?.invoke() }
+        underTest.onApplyComplete()
     }
 
     /**
@@ -235,7 +258,7 @@ class ColorPickerViewModel2Test {
      */
     private fun TestScope.assertPickerUiState(
         colorTypes: List<FloatingToolbarTabViewModel>?,
-        colorOptions: List<OptionItemViewModel<ColorOptionIconViewModel>>?,
+        colorOptions: List<OptionItemViewModel2<ColorOptionIconViewModel>>?,
         selectedColorTypeText: String,
         selectedColorOptionIndex: Int,
     ) {
@@ -260,7 +283,7 @@ class ColorPickerViewModel2Test {
      *   -1 stands for no color option should be selected
      */
     private fun TestScope.assertColorOptionUiState(
-        colorOptions: List<OptionItemViewModel<ColorOptionIconViewModel>>?,
+        colorOptions: List<OptionItemViewModel2<ColorOptionIconViewModel>>?,
         selectedColorOptionIndex: Int,
     ) {
         var foundSelectedColorOption = false

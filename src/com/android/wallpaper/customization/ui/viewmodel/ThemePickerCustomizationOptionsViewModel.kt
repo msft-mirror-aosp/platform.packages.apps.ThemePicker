@@ -27,9 +27,11 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.scopes.ViewModelScoped
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -58,15 +60,34 @@ constructor(
     val shapeGridPickerViewModel =
         shapeGridPickerViewModelFactory.create(viewModelScope = viewModelScope)
 
+    private var onApplyJob: Job? = null
+
     override val selectedOption = defaultCustomizationOptionsViewModel.selectedOption
 
-    override fun deselectOption(): Boolean {
-        keyguardQuickAffordancePickerViewModel2.resetPreview()
-        shapeGridPickerViewModel.resetPreview()
-        clockPickerViewModel.resetPreview()
-        colorPickerViewModel2.resetPreview()
-        darkModeViewModel.resetPreview()
-        return defaultCustomizationOptionsViewModel.deselectOption()
+    override fun handleBackPressed(): Boolean {
+
+        if (
+            defaultCustomizationOptionsViewModel.selectedOption.value ==
+                ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption.CLOCK &&
+                clockPickerViewModel.selectedTab.value == ClockPickerViewModel.Tab.FONT
+        ) {
+            clockPickerViewModel.cancelFontAxes()
+            return true
+        }
+
+        val isBackPressedHandled = defaultCustomizationOptionsViewModel.handleBackPressed()
+
+        if (isBackPressedHandled) {
+            // If isBackPressedHandled is handled by DefaultCustomizationOptionsViewModel, it means
+            // we navigate back to the main screen from a secondary screen. Reset preview.
+            keyguardQuickAffordancePickerViewModel2.resetPreview()
+            shapeGridPickerViewModel.resetPreview()
+            clockPickerViewModel.resetPreview()
+            colorPickerViewModel2.resetPreview()
+            darkModeViewModel.resetPreview()
+        }
+
+        return isBackPressedHandled
     }
 
     val onCustomizeClockClicked: Flow<(() -> Unit)?> =
@@ -124,7 +145,7 @@ constructor(
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val onApplyButtonClicked =
+    val onApplyButtonClicked: Flow<((onComplete: () -> Unit) -> Unit)?> =
         selectedOption
             .flatMapLatest {
                 when (it) {
@@ -147,23 +168,35 @@ constructor(
                 }
             }
             .map { onApply ->
-                {
-                    if (onApply != null) {
-                        viewModelScope.launch {
-                            onApply()
-                            // We only wait until onApply() is done to execute deselectOption()
-                            deselectOption()
+                if (onApply != null) {
+                    fun(onComplete: () -> Unit) {
+                        // Prevent double apply
+                        if (onApplyJob?.isActive != true) {
+                            onApplyJob =
+                                viewModelScope.launch {
+                                    onApply()
+                                    onComplete()
+                                    onApplyJob = null
+                                }
                         }
-                    } else {
-                        null
                     }
+                } else {
+                    null
                 }
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val isOnApplyEnabled: Flow<Boolean> = onApplyButtonClicked.map { it != null }
+    val isApplyButtonEnabled: Flow<Boolean> = onApplyButtonClicked.map { it != null }
 
-    val isOnApplyVisible: Flow<Boolean> = selectedOption.map { it != null }
+    val isApplyButtonVisible: Flow<Boolean> = selectedOption.map { it != null }
+
+    val isToolbarCollapsed: Flow<Boolean> =
+        combine(selectedOption, clockPickerViewModel.selectedTab) { selectedOption, selectedTab ->
+                selectedOption ==
+                    ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption.CLOCK &&
+                    selectedTab == ClockPickerViewModel.Tab.FONT
+            }
+            .distinctUntilChanged()
 
     @ViewModelScoped
     @AssistedFactory
