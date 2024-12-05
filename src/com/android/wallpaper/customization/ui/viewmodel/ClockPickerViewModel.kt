@@ -36,12 +36,12 @@ import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 import com.android.wallpaper.picker.customization.ui.viewmodel.FloatingToolbarTabViewModel
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel2
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
-import kotlin.collections.map
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,9 +53,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 
 /** View model for the clock customization screen. */
@@ -87,11 +89,11 @@ constructor(
             listOf(
                 FloatingToolbarTabViewModel(
                     Icon.Resource(
-                        res = R.drawable.ic_style_filled_24px,
+                        res = R.drawable.ic_clock_filled_24px,
                         contentDescription = Text.Resource(R.string.clock_style),
                     ),
                     context.getString(R.string.clock_style),
-                    it == Tab.STYLE,
+                    it == Tab.STYLE || it == Tab.FONT,
                 ) {
                     _selectedTab.value = Tab.STYLE
                 },
@@ -116,55 +118,25 @@ constructor(
             selectedClock ->
             overridingClock != null && overridingClock.clockId != selectedClock.clockId
         }
+    val selectedClock = clockPickerInteractor.selectedClock
     val previewingClock =
-        combine(overridingClock, clockPickerInteractor.selectedClock) {
-            overridingClock,
-            selectedClock ->
-            overridingClock ?: selectedClock
-        }
+        combine(overridingClock, selectedClock) { overridingClock, selectedClock ->
+                (overridingClock ?: selectedClock)
+            }
+            .shareIn(viewModelScope, SharingStarted.WhileSubscribed(), 1)
 
-    data class ClockStyleModel(val thumbnail: Drawable, val isEditable: Boolean)
+    data class ClockStyleModel(val thumbnail: Drawable, val showEditButton: StateFlow<Boolean>)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val clockStyleOptions: StateFlow<List<OptionItemViewModel<ClockStyleModel>>> =
+    val clockStyleOptions: StateFlow<List<OptionItemViewModel2<ClockStyleModel>>> =
         clockPickerInteractor.allClocks
             .mapLatest { allClocks ->
                 // Delay to avoid the case that the full list of clocks is not initiated.
                 delay(CLOCKS_EVENT_UPDATE_DELAY_MILLIS)
-                allClocks.map { clockModel ->
-                    val isSelectedFlow =
-                        previewingClock
-                            .map { it.clockId == clockModel.clockId }
-                            .stateIn(viewModelScope)
-                    val contentDescription =
-                        resources.getString(
-                            R.string.select_clock_action_description,
-                            clockModel.description,
-                        )
-                    OptionItemViewModel<ClockStyleModel>(
-                        key = MutableStateFlow(clockModel.clockId) as StateFlow<String>,
-                        payload =
-                            ClockStyleModel(
-                                clockModel.thumbnail,
-                                isEditable = !clockModel.fontAxes.isEmpty(),
-                            ),
-                        text = Text.Loaded(contentDescription),
-                        isTextUserVisible = false,
-                        isSelected = isSelectedFlow,
-                        onClicked =
-                            isSelectedFlow.map { isSelected ->
-                                if (isSelected) {
-                                    fun() {
-                                        _selectedTab.value = Tab.FONT
-                                    }
-                                } else {
-                                    fun() {
-                                        overridingClock.value = clockModel
-                                        overrideFontAxisMap.value = null
-                                    }
-                                }
-                            },
-                    )
+                val allClockMap = allClocks.groupBy { it.fontAxes.isNotEmpty() }
+                buildList {
+                    allClockMap[true]?.map { add(it.toOption(resources)) }
+                    allClockMap[false]?.map { add(it.toOption(resources)) }
                 }
             }
             // makes sure that the operations above this statement are executed on I/O dispatcher
@@ -173,28 +145,72 @@ constructor(
             .flowOn(backgroundDispatcher.limitedParallelism(1))
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    private suspend fun ClockMetadataModel.toOption(
+        resources: Resources
+    ): OptionItemViewModel2<ClockStyleModel> {
+        val isSelectedFlow = previewingClock.map { it.clockId == clockId }.stateIn(viewModelScope)
+        val isEditable = fontAxes.isNotEmpty()
+        val showEditButton = isSelectedFlow.map { it && isEditable }.stateIn(viewModelScope)
+        val contentDescription =
+            resources.getString(R.string.select_clock_action_description, description)
+        return OptionItemViewModel2<ClockStyleModel>(
+            key = MutableStateFlow(clockId) as StateFlow<String>,
+            payload = ClockStyleModel(thumbnail = thumbnail, showEditButton = showEditButton),
+            text = Text.Loaded(contentDescription),
+            isTextUserVisible = false,
+            isSelected = isSelectedFlow,
+            onClicked =
+                isSelectedFlow.map { isSelected ->
+                    if (isSelected && isEditable) {
+                        fun() {
+                            _selectedTab.value = Tab.FONT
+                        }
+                    } else {
+                        fun() {
+                            overridingClock.value = this
+                            overrideClockFontAxisMap.value = null
+                        }
+                    }
+                },
+        )
+    }
+
     // Clock Font Axis Editor
-    private val overrideFontAxisMap = MutableStateFlow<Map<String, Float>?>(null)
-    val previewingFontAxisMap =
-        combine(overrideFontAxisMap, previewingClock) { overrideAxes, previewingClock ->
-                overrideAxes ?: previewingClock.fontAxes.associate { it.key to it.currentValue }
+    private val overrideClockFontAxisMap = MutableStateFlow<Map<String, Float>?>(null)
+    private val isFontAxisMapEdited = overrideClockFontAxisMap.map { it != null }
+    val selectedClockFontAxes =
+        previewingClock
+            .map { clock -> clock.fontAxes }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val selectedClockFontAxisMap =
+        selectedClockFontAxes
+            .filterNotNull()
+            .map { fontAxes -> fontAxes.associate { it.key to it.currentValue } }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val previewingClockFontAxisMap =
+        combine(overrideClockFontAxisMap, selectedClockFontAxisMap.filterNotNull()) {
+                overrideAxisMap,
+                selectedAxisMap ->
+                overrideAxisMap?.let {
+                    val mutableMap = selectedAxisMap.toMutableMap()
+                    overrideAxisMap.forEach { (key, value) -> mutableMap[key] = value }
+                    mutableMap.toMap()
+                } ?: selectedAxisMap
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
-    private val isFontAxisMapEdited = overrideFontAxisMap.map { it != null }
-
     fun updatePreviewFontAxis(key: String, value: Float) {
-        val axisMap = previewingFontAxisMap.value.toMutableMap()
+        val axisMap = (overrideClockFontAxisMap.value?.toMutableMap() ?: mutableMapOf())
         axisMap[key] = value
-        overrideFontAxisMap.value = axisMap
+        overrideClockFontAxisMap.value = axisMap.toMap()
     }
 
-    fun applyFontAxes() {
+    fun confirmFontAxes() {
         _selectedTab.value = Tab.STYLE
     }
 
-    fun revertFontAxes() {
-        overrideFontAxisMap.value = null
+    fun cancelFontAxes() {
+        overrideClockFontAxisMap.value = null
         _selectedTab.value = Tab.STYLE
     }
 
@@ -411,7 +427,7 @@ constructor(
             previewingClockSize,
             previewingClockColorId,
             previewingSliderProgress,
-            previewingFontAxisMap,
+            previewingClockFontAxisMap,
         ) { array ->
             val isEdited = array[0] as Boolean
             val clock = array[1] as ClockMetadataModel
@@ -446,7 +462,7 @@ constructor(
         overridingClockSize.value = null
         overridingClockColorId.value = null
         overridingSliderProgress.value = null
-        overrideFontAxisMap.value = null
+        overrideClockFontAxisMap.value = null
         _selectedTab.value = Tab.STYLE
     }
 
