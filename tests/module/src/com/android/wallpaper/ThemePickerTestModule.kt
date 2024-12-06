@@ -45,6 +45,11 @@ import com.android.wallpaper.module.logging.TestUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.modules.ThemePickerAppModule
 import com.android.wallpaper.network.Requester
+import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
+import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
+import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper
 import com.android.wallpaper.picker.common.preview.ui.binder.ThemePickerWorkspaceCallbackBinder
 import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
@@ -54,7 +59,10 @@ import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
+import com.android.wallpaper.testing.FakeCategoryInteractor
 import com.android.wallpaper.testing.FakeDefaultRequester
+import com.android.wallpaper.testing.FakeThirdPartyCategoryInteractor
+import com.android.wallpaper.testing.FakeWallpaperCategoryWrapper
 import com.android.wallpaper.testing.TestPartnerProvider
 import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
 import com.android.wallpaper.util.converter.WallpaperModelFactory
@@ -102,9 +110,25 @@ abstract class ThemePickerTestModule {
 
     @Binds
     @Singleton
+    abstract fun bindWallpaperCategoryWrapper(
+        impl: FakeWallpaperCategoryWrapper
+    ): WallpaperCategoryWrapper
+
+    @Binds
+    @Singleton
     abstract fun bindImageEffectDialogUtil(
         impl: DefaultImageEffectDialogUtil
     ): ImageEffectDialogUtil
+
+    @Binds
+    @Singleton
+    abstract fun bindIndividualPickerFactoryFragment(
+        impl: DefaultIndividualPickerFactory
+    ): IndividualPickerFactory
+
+    @Binds
+    @Singleton
+    abstract fun bindCategoryInteractor(impl: FakeCategoryInteractor): CategoryInteractor
 
     @Binds @Singleton abstract fun bindInjector(impl: TestCustomizationInjector): Injector
 
@@ -117,6 +141,12 @@ abstract class ThemePickerTestModule {
     @Binds
     @Singleton
     abstract fun bindThemesUserEventLogger(impl: TestThemesUserEventLogger): ThemesUserEventLogger
+
+    @Binds
+    @Singleton
+    abstract fun bindThirdPartyCategoryInteractor(
+        impl: FakeThirdPartyCategoryInteractor
+    ): ThirdPartyCategoryInteractor
 
     @Binds @Singleton abstract fun bindToolbarBinder(impl: ThemePickerToolbarBinder): ToolbarBinder
 
@@ -164,7 +194,7 @@ abstract class ThemePickerTestModule {
         fun provideColorCustomizationManager(): ColorCustomizationManager {
             return ColorCustomizationManager.getInstance(
                 ApplicationProvider.getApplicationContext(),
-                OverlayManagerCompat(ApplicationProvider.getApplicationContext())
+                OverlayManagerCompat(ApplicationProvider.getApplicationContext()),
             )
         }
 
