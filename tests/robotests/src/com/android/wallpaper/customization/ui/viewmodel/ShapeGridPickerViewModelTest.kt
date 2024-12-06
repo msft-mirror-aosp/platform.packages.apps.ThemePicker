@@ -27,6 +27,7 @@ import com.android.customization.picker.grid.ui.viewmodel.GridIconViewModel
 import com.android.customization.picker.grid.ui.viewmodel.ShapeIconViewModel
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel2
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -109,14 +110,16 @@ class ShapeGridPickerViewModelTest {
         testScope.runTest {
             val shapeOptions = collectLastValue(underTest.shapeOptions)
 
-            for (i in 0 until underTest.shapePaths.size) {
-                val expectedKey = underTest.shapePaths[i].first
-                val expectedPath = underTest.shapePaths[i].second
+            for (i in 0 until FakeShapeGridManager.DEFAULT_SHAPE_OPTION_LIST.size) {
+                val (expectedKey, expectedPath, expectedTitle) =
+                    with(FakeShapeGridManager.DEFAULT_SHAPE_OPTION_LIST[i]) {
+                        arrayOf(key, path, title)
+                    }
                 assertShapeItem(
                     optionItem = shapeOptions()?.get(i),
-                    key = expectedKey,
+                    key = FakeShapeGridManager.DEFAULT_SHAPE_OPTION_LIST[i].key,
                     payload = ShapeIconViewModel(expectedKey, expectedPath),
-                    text = Text.Loaded(expectedKey),
+                    text = Text.Loaded(expectedTitle),
                     isTextUserVisible = true,
                     isSelected = expectedKey == "arch",
                     isEnabled = true,
@@ -136,14 +139,15 @@ class ShapeGridPickerViewModelTest {
             onCircleOptionClicked()?.invoke()
 
             assertThat(previewingShapeKey()).isEqualTo("circle")
-            for (i in 0 until underTest.shapePaths.size) {
-                val expectedKey = underTest.shapePaths[i].first
-                val expectedPath = underTest.shapePaths[i].second
+            for (i in 0 until FakeShapeGridManager.DEFAULT_SHAPE_OPTION_LIST.size) {
+                val expectedKey = FakeShapeGridManager.DEFAULT_SHAPE_OPTION_LIST[i].key
+                val expectedPath = FakeShapeGridManager.DEFAULT_SHAPE_OPTION_LIST[i].path
+                val expectedTitle = FakeShapeGridManager.DEFAULT_SHAPE_OPTION_LIST[i].title
                 assertShapeItem(
                     optionItem = shapeOptions()?.get(i),
                     key = expectedKey,
                     payload = ShapeIconViewModel(expectedKey, expectedPath),
-                    text = Text.Loaded(expectedKey),
+                    text = Text.Loaded(expectedTitle),
                     isTextUserVisible = true,
                     isSelected = expectedKey == "circle",
                     isEnabled = true,
@@ -156,7 +160,7 @@ class ShapeGridPickerViewModelTest {
         testScope.runTest {
             val selectedGridOption = collectLastValue(underTest.selectedGridOption)
 
-            assertOptionItem(
+            assertGridItem(
                 optionItem = selectedGridOption(),
                 key = "normal",
                 payload = GridIconViewModel(5, 5, iconShapePath),
@@ -180,7 +184,7 @@ class ShapeGridPickerViewModelTest {
             onPracticalOptionClick()?.invoke()
             onApply()?.invoke()
 
-            assertOptionItem(
+            assertGridItem(
                 optionItem = selectedGridOption(),
                 key = "practical",
                 payload = GridIconViewModel(4, 5, iconShapePath),
@@ -196,7 +200,7 @@ class ShapeGridPickerViewModelTest {
         testScope.runTest {
             val optionItems = collectLastValue(underTest.gridOptions)
 
-            assertOptionItem(
+            assertGridItem(
                 optionItem = optionItems()?.get(0),
                 key = "normal",
                 payload = GridIconViewModel(5, 5, iconShapePath),
@@ -205,7 +209,7 @@ class ShapeGridPickerViewModelTest {
                 isSelected = true,
                 isEnabled = true,
             )
-            assertOptionItem(
+            assertGridItem(
                 optionItem = optionItems()?.get(1),
                 key = "practical",
                 payload = GridIconViewModel(4, 5, iconShapePath),
@@ -226,7 +230,7 @@ class ShapeGridPickerViewModelTest {
 
             onPracticalOptionClick()?.invoke()
 
-            assertOptionItem(
+            assertGridItem(
                 optionItem = optionItems()?.get(0),
                 key = "normal",
                 payload = GridIconViewModel(5, 5, iconShapePath),
@@ -235,7 +239,7 @@ class ShapeGridPickerViewModelTest {
                 isSelected = false,
                 isEnabled = true,
             )
-            assertOptionItem(
+            assertGridItem(
                 optionItem = optionItems()?.get(1),
                 key = "practical",
                 payload = GridIconViewModel(4, 5, iconShapePath),
@@ -264,8 +268,8 @@ class ShapeGridPickerViewModelTest {
         assertThat(optionItem.isEnabled).isEqualTo(isEnabled)
     }
 
-    private fun TestScope.assertOptionItem(
-        optionItem: OptionItemViewModel<GridIconViewModel>?,
+    private fun TestScope.assertGridItem(
+        optionItem: OptionItemViewModel2<GridIconViewModel>?,
         key: String,
         payload: GridIconViewModel?,
         text: Text,

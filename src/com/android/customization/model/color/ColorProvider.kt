@@ -39,6 +39,7 @@ import com.android.customization.picker.color.shared.model.ColorType
 import com.android.systemui.monet.ColorScheme
 import com.android.systemui.monet.Style
 import com.android.themepicker.R
+import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.module.InjectorProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,7 @@ class ColorProvider(private val context: Context, stubPackageName: String) :
     private var loaderJob: Job? = null
     private val monetEnabled = ColorUtils.isMonetEnabled(context)
     // TODO(b/202145216): Use style method to fetch the list of style.
+    @Style.Type
     private var styleList =
         if (themeStyleEnabled)
             arrayOf(Style.TONAL_SPOT, Style.SPRITZ, Style.VIBRANT, Style.EXPRESSIVE)
@@ -96,13 +98,22 @@ class ColorProvider(private val context: Context, stubPackageName: String) :
         homeWallpaperColors: WallpaperColors?,
         lockWallpaperColors: WallpaperColors?,
     ) {
-        val wallpaperColorsChanged =
-            this.homeWallpaperColors != homeWallpaperColors ||
-                this.lockWallpaperColors != lockWallpaperColors
-        if (wallpaperColorsChanged || reload) {
-            loadSeedColors(homeWallpaperColors, lockWallpaperColors)
-            this.homeWallpaperColors = homeWallpaperColors
-            this.lockWallpaperColors = lockWallpaperColors
+        val isNewPickerUi = BaseFlags.get().isNewPickerUi()
+        if (isNewPickerUi) {
+            val wallpaperColorsChanged = this.homeWallpaperColors != homeWallpaperColors
+            if (wallpaperColorsChanged || reload) {
+                loadSeedColors(homeWallpaperColors)
+                this.homeWallpaperColors = homeWallpaperColors
+            }
+        } else {
+            val wallpaperColorsChanged =
+                this.homeWallpaperColors != homeWallpaperColors ||
+                    this.lockWallpaperColors != lockWallpaperColors
+            if (wallpaperColorsChanged || reload) {
+                loadSeedColors(homeWallpaperColors, lockWallpaperColors)
+                this.homeWallpaperColors = homeWallpaperColors
+                this.lockWallpaperColors = lockWallpaperColors
+            }
         }
 
         scope.launch {
@@ -132,7 +143,7 @@ class ColorProvider(private val context: Context, stubPackageName: String) :
 
     private fun loadSeedColors(
         homeWallpaperColors: WallpaperColors?,
-        lockWallpaperColors: WallpaperColors?,
+        lockWallpaperColors: WallpaperColors? = null,
     ) {
         if (homeWallpaperColors == null) return
 
@@ -328,6 +339,7 @@ class ColorProvider(private val context: Context, stubPackageName: String) :
                         } catch (e: Resources.NotFoundException) {
                             null
                         }
+                    @Style.Type
                     val style =
                         try {
                             if (styleName != null) Style.valueOf(styleName) else Style.TONAL_SPOT
@@ -364,7 +376,7 @@ class ColorProvider(private val context: Context, stubPackageName: String) :
     private fun buildPreset(
         bundleName: String,
         index: Int,
-        style: Style? = null,
+        @Style.Type style: Int? = null,
         type: ColorType = ColorType.PRESET_COLOR,
     ): ColorOptionImpl {
         val builder = ColorOptionImpl.Builder()
