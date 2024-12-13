@@ -69,6 +69,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
         colorUpdateViewModel: ColorUpdateViewModel,
         lifecycleOwner: LifecycleOwner,
         navigateToWallpaperCategoriesScreen: (screen: Screen) -> Unit,
+        navigateToMoreLockScreenSettingsActivity: () -> Unit,
     ) {
         defaultCustomizationOptionsBinder.bind(
             view,
@@ -79,6 +80,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             colorUpdateViewModel,
             lifecycleOwner,
             navigateToWallpaperCategoriesScreen,
+            navigateToMoreLockScreenSettingsActivity,
         )
 
         val optionClock =
@@ -103,6 +105,14 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             optionShortcut?.findViewById<ImageView>(
                 R.id.option_entry_keyguard_quick_affordance_icon_2
             )
+
+        val optionMoreLockScreenSettings =
+            lockScreenCustomizationOptionEntries
+                .find { it.first == ThemePickerLockCustomizationOption.MORE_LOCK_SCREEN_SETTINGS }
+                ?.second
+        optionMoreLockScreenSettings?.setOnClickListener {
+            navigateToMoreLockScreenSettingsActivity.invoke()
+        }
 
         val optionColors =
             homeScreenCustomizationOptionEntries
