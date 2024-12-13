@@ -55,6 +55,7 @@ import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPick
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -74,6 +75,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
         lifecycleOwner: LifecycleOwner,
         navigateToWallpaperCategoriesScreen: (screen: Screen) -> Unit,
         navigateToMoreLockScreenSettingsActivity: () -> Unit,
+        navigateToColorContrastSettingsActivity: () -> Unit,
     ) {
         defaultCustomizationOptionsBinder.bind(
             view,
@@ -85,6 +87,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             lifecycleOwner,
             navigateToWallpaperCategoriesScreen,
             navigateToMoreLockScreenSettingsActivity,
+            navigateToColorContrastSettingsActivity,
         )
 
         val optionClock =
@@ -133,6 +136,16 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             optionShapeGrid?.findViewById<TextView>(R.id.option_entry_app_shape_grid_description)
         val optionShapeGridIcon =
             optionShapeGrid?.findViewById<ImageView>(R.id.option_entry_app_shape_grid_icon)
+
+        val optionColorContrast =
+            homeScreenCustomizationOptionEntries
+                .find { it.first == ThemePickerHomeCustomizationOption.COLOR_CONTRAST }
+                ?.second
+        optionColorContrast?.setOnClickListener { navigateToColorContrastSettingsActivity.invoke() }
+        val optionColorContrastDescription: TextView? =
+            optionColorContrast?.findViewById(R.id.option_entry_color_contrast_description)
+        val optionColorContrastIcon: ImageView? =
+            optionColorContrast?.findViewById(R.id.option_entry_color_contrast_icon)
 
         val optionsViewModel =
             viewModel.customizationOptionsViewModel as ThemePickerCustomizationOptionsViewModel
@@ -206,6 +219,23 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                                 )
                             )
                         }
+                    }
+                }
+
+                launch {
+                    optionsViewModel.colorContrastSectionViewModel.summary.collectLatest { summary
+                        ->
+                        optionColorContrastDescription?.let {
+                            TextViewBinder.bind(view = it, viewModel = summary.description)
+                        }
+
+                        if (summary.icon != null && optionColorContrastIcon != null) {
+                            IconViewBinder.bind(
+                                view = optionColorContrastIcon,
+                                viewModel = summary.icon,
+                            )
+                        }
+                        optionColorContrastIcon?.isVisible = summary.icon != null
                     }
                 }
 
