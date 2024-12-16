@@ -28,10 +28,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.customization.model.color.ColorOptionImpl
 import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.ui.view.ClockConstraintLayoutHostView
 import com.android.customization.picker.clock.ui.view.ClockConstraintLayoutHostView.Companion.addClockViews
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
+import com.android.customization.picker.color.ui.binder.ColorOptionIconBinder2
+import com.android.customization.picker.color.ui.view.ColorOptionIconView2
+import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
 import com.android.customization.picker.grid.ui.binder.GridIconViewBinder
 import com.android.systemui.plugins.clocks.ClockFontAxisSetting
 import com.android.systemui.plugins.clocks.ClockPreviewConfig
@@ -52,7 +56,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 @Singleton
@@ -70,6 +73,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
         colorUpdateViewModel: ColorUpdateViewModel,
         lifecycleOwner: LifecycleOwner,
         navigateToWallpaperCategoriesScreen: (screen: Screen) -> Unit,
+        navigateToMoreLockScreenSettingsActivity: () -> Unit,
     ) {
         defaultCustomizationOptionsBinder.bind(
             view,
@@ -80,6 +84,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             colorUpdateViewModel,
             lifecycleOwner,
             navigateToWallpaperCategoriesScreen,
+            navigateToMoreLockScreenSettingsActivity,
         )
 
         val optionClock =
@@ -105,10 +110,20 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                 R.id.option_entry_keyguard_quick_affordance_icon_2
             )
 
+        val optionMoreLockScreenSettings =
+            lockScreenCustomizationOptionEntries
+                .find { it.first == ThemePickerLockCustomizationOption.MORE_LOCK_SCREEN_SETTINGS }
+                ?.second
+        optionMoreLockScreenSettings?.setOnClickListener {
+            navigateToMoreLockScreenSettingsActivity.invoke()
+        }
+
         val optionColors =
             homeScreenCustomizationOptionEntries
                 .find { it.first == ThemePickerHomeCustomizationOption.COLORS }
                 ?.second
+        val optionColorsIcon =
+            optionColors?.findViewById<ColorOptionIconView2>(R.id.option_entry_colors_icon)
 
         val optionShapeGrid =
             homeScreenCustomizationOptionEntries
@@ -193,6 +208,22 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                         }
                     }
                 }
+
+                launch {
+                    optionsViewModel.colorPickerViewModel2.selectedColorOption.collect { colorOption
+                        ->
+                        (colorOption as? ColorOptionImpl)?.let {
+                            optionColorsIcon?.let {
+                                ColorOptionIconBinder2.bind(
+                                    view = it,
+                                    viewModel =
+                                        ColorOptionIconViewModel.fromColorOption(colorOption),
+                                    darkTheme = view.resources.configuration.isNightModeActive,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -259,7 +290,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     combine(
-                            clockPickerViewModel.previewingClock.filterNotNull(),
+                            clockPickerViewModel.previewingClock,
                             clockPickerViewModel.previewingClockSize,
                         ) { clock, size ->
                             clock to size
