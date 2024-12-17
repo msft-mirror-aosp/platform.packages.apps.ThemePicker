@@ -370,6 +370,13 @@
     <string name="color_picker_title">System colors</string>
 
     <!--
+    Title for a customization picker section where the user can configure the system colors by
+    selecting from a list of color options.
+    [CHAR LIMIT=32].
+    -->
+    <string name="system_colors_title">Colors</string>
+
+    <!--
     Name of the slot on the "start" side of the bottom of the lock screen, where lock screen
     shortcuts can be added to the lock screen. In left-to-right languages, this is the left-hand
     side button. In right-to-left languages, this is the right-hand side button. [CHAR LIMIT=16].
