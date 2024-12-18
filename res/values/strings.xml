@@ -90,6 +90,9 @@
     <!-- Title of a radio button to apply clock size large. [CHAR LIMIT=15] -->
     <string name="clock_size_large">Large</string>
 
+    <!-- Description for toggling on large clock on the lock screen -->
+    <string name="clock_size_large_description">Shown when notifications aren\'t visible</string>
+
     <!-- Title of a radio button to apply clock size small. [CHAR LIMIT=15] -->
     <string name="clock_size_small">Small</string>
 
