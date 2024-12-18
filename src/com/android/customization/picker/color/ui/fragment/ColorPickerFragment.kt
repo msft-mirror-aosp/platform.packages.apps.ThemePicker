@@ -20,10 +20,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.MarginLayoutParams
 import android.widget.FrameLayout
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.get
 import androidx.lifecycle.lifecycleScope
@@ -33,7 +37,7 @@ import com.android.customization.model.mode.DarkModeSectionController
 import com.android.customization.module.ThemePickerInjector
 import com.android.customization.picker.color.ui.binder.ColorPickerBinder
 import com.android.themepicker.R
-import com.android.wallpaper.module.CustomizationSections
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
@@ -70,7 +74,16 @@ class ColorPickerFragment : AppbarFragment() {
                 container,
                 false,
             )
+        ViewCompat.setOnApplyWindowInsetsListener(view) { v, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updateLayoutParams<MarginLayoutParams> {
+                topMargin = insets.top
+                bottomMargin = insets.bottom
+            }
+            WindowInsetsCompat.CONSUMED
+        }
         setUpToolbar(view)
+
         val injector = InjectorProvider.getInjector() as ThemePickerInjector
         val lockScreenView: CardView = view.requireViewById(R.id.lock_preview)
         val homeScreenView: CardView = view.requireViewById(R.id.home_preview)
@@ -85,10 +98,7 @@ class ColorPickerFragment : AppbarFragment() {
                 viewModel =
                     ViewModelProvider(
                             requireActivity(),
-                            injector.getColorPickerViewModelFactory(
-                                context = requireContext(),
-                                wallpaperColorsRepository = wallpaperColorsRepository,
-                            ),
+                            injector.getColorPickerViewModelFactory(requireContext()),
                         )
                         .get(),
                 lifecycleOwner = this,
@@ -126,7 +136,7 @@ class ColorPickerFragment : AppbarFragment() {
                                             loadInitialColors(
                                                 wallpaperManager,
                                                 wallpaperColorsRepository,
-                                                CustomizationSections.Screen.LOCK_SCREEN
+                                                Screen.LOCK_SCREEN
                                             )
                                         }
                                     }
@@ -138,7 +148,7 @@ class ColorPickerFragment : AppbarFragment() {
                             wallpaperColorsRepository.setLockWallpaperColors(colors)
                         },
                         wallpaperInteractor = injector.getWallpaperInteractor(requireContext()),
-                        screen = CustomizationSections.Screen.LOCK_SCREEN,
+                        screen = Screen.LOCK_SCREEN,
                     ),
                 lifecycleOwner = this,
                 offsetToStart =
@@ -177,7 +187,7 @@ class ColorPickerFragment : AppbarFragment() {
                                         loadInitialColors(
                                             wallpaperManager,
                                             wallpaperColorsRepository,
-                                            CustomizationSections.Screen.HOME_SCREEN
+                                            Screen.HOME_SCREEN
                                         )
                                     }
                                 }
@@ -189,7 +199,7 @@ class ColorPickerFragment : AppbarFragment() {
                         wallpaperColorsRepository.setHomeWallpaperColors(colors)
                     },
                     wallpaperInteractor = injector.getWallpaperInteractor(requireContext()),
-                    screen = CustomizationSections.Screen.HOME_SCREEN,
+                    screen = Screen.HOME_SCREEN,
                 ),
             lifecycleOwner = this,
             offsetToStart =
@@ -204,6 +214,7 @@ class ColorPickerFragment : AppbarFragment() {
                     context,
                     lifecycle,
                     injector.getDarkModeSnapshotRestorer(requireContext()),
+                    injector.uiModeManager.get(),
                     injector.getUserEventLogger(),
                 )
                 .createView(requireContext())
@@ -221,19 +232,19 @@ class ColorPickerFragment : AppbarFragment() {
     private suspend fun loadInitialColors(
         wallpaperManager: WallpaperManager,
         colorViewModel: WallpaperColorsRepository,
-        screen: CustomizationSections.Screen,
+        screen: Screen,
     ) {
         withContext(Dispatchers.IO) {
             val colors =
                 wallpaperManager.getWallpaperColors(
-                    if (screen == CustomizationSections.Screen.LOCK_SCREEN) {
+                    if (screen == Screen.LOCK_SCREEN) {
                         WallpaperManager.FLAG_LOCK
                     } else {
                         WallpaperManager.FLAG_SYSTEM
                     }
                 )
             withContext(Dispatchers.Main) {
-                if (screen == CustomizationSections.Screen.LOCK_SCREEN) {
+                if (screen == Screen.LOCK_SCREEN) {
                     colorViewModel.setLockWallpaperColors(colors)
                 } else {
                     colorViewModel.setHomeWallpaperColors(colors)
@@ -249,10 +260,6 @@ class ColorPickerFragment : AppbarFragment() {
 
     override fun getDefaultTitle(): CharSequence {
         return requireContext().getString(R.string.color_picker_title)
-    }
-
-    override fun getToolbarColorId(): Int {
-        return android.R.color.transparent
     }
 
     override fun getToolbarTextColor(): Int {
