@@ -22,9 +22,9 @@
         device. [CHAR LIMIT=15] -->
     <string name="theme_title">Style</string>
 
-    <!-- Title of a section of the customization picker where the user can select a Clock face.
+    <!-- Title of a customization picker section where the user can customize lock screen clock.
         [CHAR LIMIT=15] -->
-    <string name="clock_title">Custom Clock</string>
+    <string name="clock_title">Clock</string>
 
     <!-- Description of a section of the customization picker where the user can select a Clock
         face. [CHAR LIMIT=15] -->
