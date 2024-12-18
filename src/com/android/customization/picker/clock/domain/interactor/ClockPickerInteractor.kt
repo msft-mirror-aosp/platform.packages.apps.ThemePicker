@@ -23,6 +23,7 @@ import com.android.customization.picker.clock.data.repository.ClockPickerReposit
 import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
 import com.android.customization.picker.clock.shared.model.ClockSnapshotModel
+import com.android.systemui.plugins.clocks.ClockFontAxisSetting
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -57,6 +58,9 @@ constructor(
 
     val seedColor: Flow<Int?> = repository.selectedClock.map { clock -> clock.seedColor }
 
+    val axisSettings: Flow<List<ClockFontAxisSetting>?> =
+        repository.selectedClock.map { clock -> clock.fontAxes.map { it.toSetting() } }
+
     val selectedClockSize: Flow<ClockSize> = repository.selectedClockSize
 
     suspend fun setSelectedClock(clockId: String) {
@@ -84,6 +88,30 @@ constructor(
         setClockOption(ClockSnapshotModel(clockSize = size))
     }
 
+    suspend fun setClockFontAxes(axisSettings: List<ClockFontAxisSetting>) {
+        setClockOption(ClockSnapshotModel(axisSettings = axisSettings))
+    }
+
+    suspend fun applyClock(
+        clockId: String?,
+        size: ClockSize?,
+        selectedColorId: String?,
+        @IntRange(from = 0, to = 100) colorToneProgress: Int?,
+        @ColorInt seedColor: Int?,
+        axisSettings: List<ClockFontAxisSetting>,
+    ) {
+        setClockOption(
+            ClockSnapshotModel(
+                clockId = clockId,
+                clockSize = size,
+                selectedColorId = selectedColorId,
+                colorToneProgress = colorToneProgress,
+                seedColor = seedColor,
+                axisSettings = axisSettings,
+            )
+        )
+    }
+
     private suspend fun setClockOption(clockSnapshotModel: ClockSnapshotModel) {
         // [ClockCarouselViewModel] is monitoring the [ClockPickerInteractor.setSelectedClock] job,
         // so it needs to finish last.
@@ -94,10 +122,11 @@ constructor(
             repository.setClockColor(
                 selectedColorId = clockSnapshotModel.selectedColorId,
                 colorToneProgress = clockSnapshotModel.colorToneProgress,
-                seedColor = clockSnapshotModel.seedColor
+                seedColor = clockSnapshotModel.seedColor,
             )
         }
         clockSnapshotModel.clockId?.let { repository.setSelectedClock(it) }
+        clockSnapshotModel.axisSettings?.let { repository.setClockFontAxes(it) }
     }
 
     private suspend fun storeCurrentClockOption(clockSnapshotModel: ClockSnapshotModel) {
@@ -125,5 +154,6 @@ constructor(
             seedColor =
                 latestOption.colorToneProgress?.let { latestOption.seedColor }
                     ?: seedColor.firstOrNull(),
+            axisSettings = latestOption.axisSettings ?: axisSettings.firstOrNull(),
         )
 }

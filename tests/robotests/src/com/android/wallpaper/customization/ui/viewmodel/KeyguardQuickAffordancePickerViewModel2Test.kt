@@ -30,7 +30,7 @@ import com.android.themepicker.R
 import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 import com.android.wallpaper.picker.customization.ui.viewmodel.FloatingToolbarTabViewModel
-import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel2
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
@@ -117,19 +117,19 @@ class KeyguardQuickAffordancePickerViewModel2Test {
     @Test
     fun selectedQuickAffordancesMapUpdates_whenClickingOnQuickAffordanceOptionsAndCallingResetPreview() =
         testScope.runTest {
-            val selectedQuickAffordances = collectLastValue(underTest.selectedQuickAffordances)
+            val previewingQuickAffordances = collectLastValue(underTest.previewingQuickAffordances)
 
             val tabs = collectLastValue(underTest.tabs)
             val quickAffordances = collectLastValue(underTest.quickAffordances)
 
             // Default selectedQuickAffordances is an empty map
-            assertThat(selectedQuickAffordances()).isEqualTo(emptyMap<String, String>())
+            assertThat(previewingQuickAffordances()).isEqualTo(emptyMap<String, String>())
 
             // Click on quick affordance 1 when selected slot ID is bottom_start
             val onClickAffordance1 =
                 collectLastValue(quickAffordances()?.get(1)?.onClicked ?: emptyFlow())
             onClickAffordance1()?.invoke()
-            assertThat(selectedQuickAffordances())
+            assertThat(previewingQuickAffordances())
                 .isEqualTo(
                     mapOf(
                         KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_START to
@@ -143,18 +143,18 @@ class KeyguardQuickAffordancePickerViewModel2Test {
             val onClickAffordance2 =
                 collectLastValue(quickAffordances()?.get(2)?.onClicked ?: emptyFlow())
             onClickAffordance2()?.invoke()
-            assertThat(selectedQuickAffordances())
+            assertThat(previewingQuickAffordances())
                 .isEqualTo(
                     mapOf(
                         KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_START to
                             FakeCustomizationProviderClient.AFFORDANCE_1,
                         KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_END to
-                            FakeCustomizationProviderClient.AFFORDANCE_2
+                            FakeCustomizationProviderClient.AFFORDANCE_2,
                     )
                 )
 
             underTest.resetPreview()
-            assertThat(selectedQuickAffordances()).isEqualTo(emptyMap<String, String>())
+            assertThat(previewingQuickAffordances()).isEqualTo(emptyMap<String, String>())
         }
 
     @Test
@@ -203,7 +203,7 @@ class KeyguardQuickAffordancePickerViewModel2Test {
                 icon =
                     Icon.Loaded(
                         FakeCustomizationProviderClient.ICON_1,
-                        Text.Loaded("Right shortcut")
+                        Text.Loaded("Right shortcut"),
                     ),
                 text = "Right shortcut",
                 isSelected = true,
@@ -399,7 +399,7 @@ class KeyguardQuickAffordancePickerViewModel2Test {
 
     private fun assertQuickAffordance(
         testScope: TestScope,
-        quickAffordance: OptionItemViewModel<Icon>?,
+        quickAffordance: OptionItemViewModel2<Icon>?,
         key: String,
         icon: Icon,
         text: Text,

@@ -56,7 +56,6 @@ constructor(
     private val _isApplyingSystemColor = MutableStateFlow(false)
     override val isApplyingSystemColor = _isApplyingSystemColor.asStateFlow()
 
-    // TODO (b/299510645): update color options on selected option change after restart is disabled
     override val colorOptions: Flow<Map<ColorType, List<ColorOptionModel>>> =
         combine(homeWallpaperColors, lockWallpaperColors) { homeColors, lockColors ->
                 homeColors to lockColors
@@ -71,7 +70,7 @@ constructor(
                             Result.success(
                                 mapOf(
                                     ColorType.WALLPAPER_COLOR to listOf(),
-                                    ColorType.PRESET_COLOR to listOf()
+                                    ColorType.PRESET_COLOR to listOf(),
                                 )
                             )
                         )
@@ -81,7 +80,7 @@ constructor(
                     val lockColorsLoaded = lockColors as WallpaperColorsModel.Loaded
                     colorManager.setWallpaperColors(
                         homeColorsLoaded.colors,
-                        lockColorsLoaded.colors
+                        lockColorsLoaded.colors,
                     )
                     colorManager.fetchOptions(
                         object : CustomizationManager.OptionsFetchedListener<ColorOption?> {
@@ -102,7 +101,7 @@ constructor(
                                     Result.success(
                                         mapOf(
                                             ColorType.WALLPAPER_COLOR to wallpaperColorOptions,
-                                            ColorType.PRESET_COLOR to presetColorOptions
+                                            ColorType.PRESET_COLOR to presetColorOptions,
                                         )
                                     )
                                 )
@@ -117,7 +116,7 @@ constructor(
                                 )
                             }
                         },
-                        /* reload= */ false
+                        /* reload= */ false,
                     )
                 }
             }
@@ -141,7 +140,7 @@ constructor(
                             Result.failure(throwable ?: Throwable("Error loading theme bundles"))
                         )
                     }
-                }
+                },
             )
         }
     }
@@ -158,11 +157,7 @@ constructor(
             colorOptionBuilder.addOverlayPackage(overlay.key, overlay.value)
         }
         val colorOption = colorOptionBuilder.build()
-        return ColorOptionModel(
-            key = "",
-            colorOption = colorOption,
-            isSelected = false,
-        )
+        return ColorOptionModel(key = "", colorOption = colorOption, isSelected = false)
     }
 
     override fun getCurrentColorSource(): String? {
@@ -173,6 +168,8 @@ constructor(
         return ColorOptionModel(
             key = "${this.type}::${this.style}::${this.serializedPackages}",
             colorOption = this,
+            // Instead of using the selectedColorOption flow to determine isSelected, we check the
+            // source of truth, which is the settings, using ColorOption::isActive
             isSelected = isActive(colorManager),
         )
     }

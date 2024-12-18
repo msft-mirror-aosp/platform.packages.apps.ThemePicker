@@ -49,6 +49,7 @@
             android:minHeight="0dp"
             style="@style/Switch.SettingsLib"/>
 
+
     </LinearLayout>
 
     <Space
@@ -64,5 +65,4 @@
         android:text="@string/beta_title"
         android:textColor="@color/text_color_on_accent"
         style="@style/BetaTagTextStyle" />
-
 </com.android.customization.picker.themedicon.ThemedIconSectionView>
