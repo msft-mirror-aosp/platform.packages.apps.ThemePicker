@@ -169,7 +169,7 @@ constructor(private val defaultToolbarBinder: DefaultToolbarBinder) : ToolbarBin
                     viewModel.selectedOption.collect {
                         val stringResId =
                             when (it) {
-                                COLORS -> ThemePickerR.string.color_picker_title
+                                COLORS -> ThemePickerR.string.system_colors_title
                                 APP_SHAPE_GRID -> ThemePickerR.string.shape_and_grid_title
                                 CLOCK -> ThemePickerR.string.custom_clocks_label
                                 SHORTCUTS ->
