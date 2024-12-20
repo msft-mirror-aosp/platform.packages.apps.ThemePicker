@@ -355,7 +355,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                                     // TODO(b/379348167): get correct isShadeLayoutWide from picker
                                     clockController.largeClock.layout.applyPreviewConstraints(
                                         ClockPreviewConfig(
-                                            previewContext = context,
+                                            context = context,
                                             isShadeLayoutWide = false,
                                             isSceneContainerFlagEnabled = false,
                                         ),
@@ -363,7 +363,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                                     )
                                     clockController.smallClock.layout.applyPreviewConstraints(
                                         ClockPreviewConfig(
-                                            previewContext = context,
+                                            context = context,
                                             isShadeLayoutWide = false,
                                             isSceneContainerFlagEnabled = false,
                                         ),
