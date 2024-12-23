@@ -158,9 +158,13 @@ constructor(
                         combine(colorPickerViewModel2.onApply, darkModeViewModel.onApply) {
                             colorOnApply,
                             darkModeOnApply ->
-                            {
-                                colorOnApply?.invoke()
-                                darkModeOnApply?.invoke()
+                            if (colorOnApply == null && darkModeOnApply == null) {
+                                null
+                            } else {
+                                {
+                                    colorOnApply?.invoke()
+                                    darkModeOnApply?.invoke()
+                                }
                             }
                         }
                     else -> flow { emit(null) }
