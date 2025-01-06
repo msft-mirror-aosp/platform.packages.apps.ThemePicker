@@ -27,7 +27,11 @@ import com.android.customization.picker.clock.data.repository.ClockPickerReposit
 import com.android.customization.picker.clock.data.repository.ClockPickerRepositoryImpl
 import com.android.customization.picker.clock.data.repository.ClockRegistryProvider
 import com.android.customization.picker.color.data.repository.ColorPickerRepository
+import com.android.customization.picker.color.data.repository.ColorPickerRepository2
 import com.android.customization.picker.color.data.repository.ColorPickerRepositoryImpl
+import com.android.customization.picker.color.data.repository.ColorPickerRepositoryImpl2
+import com.android.customization.picker.themedicon.data.repository.ThemedIconRepository
+import com.android.customization.picker.themedicon.data.repository.ThemedIconRepositoryImpl
 import com.android.systemui.shared.clocks.ClockRegistry
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
@@ -46,9 +50,13 @@ import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.CuratedPhotosInteractor
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.implementations.CategoryInteractorImpl
 import com.android.wallpaper.picker.category.domain.interactor.implementations.CreativeCategoryInteractorImpl
 import com.android.wallpaper.picker.category.domain.interactor.implementations.DefaultCategoriesLoadingStatusInteractor
+import com.android.wallpaper.picker.category.domain.interactor.implementations.DefaultCuratedPhotosInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.implementations.ThirdPartyCategoryInteractorImpl
 import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
 import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
 import com.android.wallpaper.picker.category.wrapper.DefaultWallpaperCategoryWrapper
@@ -87,6 +95,16 @@ abstract class ThemePickerAppModule {
 
     @Binds
     @Singleton
+    abstract fun bindColorPickerRepository2(
+        impl: ColorPickerRepositoryImpl2
+    ): ColorPickerRepository2
+
+    @Binds
+    @Singleton
+    abstract fun bindThemedIconRepository(impl: ThemedIconRepositoryImpl): ThemedIconRepository
+
+    @Binds
+    @Singleton
     abstract fun bindCreativeCategoryInteractor(
         impl: CreativeCategoryInteractorImpl
     ): CreativeCategoryInteractor
@@ -96,6 +114,12 @@ abstract class ThemePickerAppModule {
     abstract fun bindWallpaperCategoryWrapper(
         impl: DefaultWallpaperCategoryWrapper
     ): WallpaperCategoryWrapper
+
+    @Binds
+    @Singleton
+    abstract fun bindCuratedPhotosInteractor(
+        impl: DefaultCuratedPhotosInteractorImpl
+    ): CuratedPhotosInteractor
 
     @Binds
     @Singleton
@@ -140,6 +164,12 @@ abstract class ThemePickerAppModule {
     @Binds
     @Singleton
     abstract fun bindThemesUserEventLogger(impl: ThemesUserEventLoggerImpl): ThemesUserEventLogger
+
+    @Binds
+    @Singleton
+    abstract fun bindThirdPartyCategoryInteractor(
+        impl: ThirdPartyCategoryInteractorImpl
+    ): ThirdPartyCategoryInteractor
 
     @Binds @Singleton abstract fun bindToolbarBinder(impl: ThemePickerToolbarBinder): ToolbarBinder
 

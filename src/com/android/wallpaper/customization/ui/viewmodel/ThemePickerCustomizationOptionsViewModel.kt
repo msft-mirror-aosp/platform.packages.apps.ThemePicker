@@ -27,9 +27,12 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.scopes.ViewModelScoped
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -44,12 +47,17 @@ constructor(
     colorPickerViewModel2Factory: ColorPickerViewModel2.Factory,
     clockPickerViewModelFactory: ClockPickerViewModel.Factory,
     shapeGridPickerViewModelFactory: ShapeGridPickerViewModel.Factory,
+    val colorContrastSectionViewModel: ColorContrastSectionViewModel2,
     val darkModeViewModel: DarkModeViewModel,
+    val themedIconViewModel: ThemedIconViewModel,
     @Assisted private val viewModelScope: CoroutineScope,
 ) : CustomizationOptionsViewModel {
 
     private val defaultCustomizationOptionsViewModel =
         defaultCustomizationOptionsViewModelFactory.create(viewModelScope)
+
+    override val wallpaperCarouselViewModel =
+        defaultCustomizationOptionsViewModel.wallpaperCarouselViewModel
 
     val clockPickerViewModel = clockPickerViewModelFactory.create(viewModelScope = viewModelScope)
     val keyguardQuickAffordancePickerViewModel2 =
@@ -58,22 +66,40 @@ constructor(
     val shapeGridPickerViewModel =
         shapeGridPickerViewModelFactory.create(viewModelScope = viewModelScope)
 
+    private var onApplyJob: Job? = null
+
     override val selectedOption = defaultCustomizationOptionsViewModel.selectedOption
 
-    override fun handleBackPressed(): Boolean {
-        val isBackPressedHandled = defaultCustomizationOptionsViewModel.handleBackPressed()
+    override val discardChangesDialogViewModel =
+        defaultCustomizationOptionsViewModel.discardChangesDialogViewModel
 
-        if (isBackPressedHandled) {
-            // If isBackPressedHandled is handled by DefaultCustomizationOptionsViewModel, it means
-            // we navigate back to the main screen from a secondary screen. Reset preview.
-            keyguardQuickAffordancePickerViewModel2.resetPreview()
-            shapeGridPickerViewModel.resetPreview()
-            clockPickerViewModel.resetPreview()
-            colorPickerViewModel2.resetPreview()
-            darkModeViewModel.resetPreview()
+    override fun handleBackPressed(): Boolean {
+
+        if (
+            defaultCustomizationOptionsViewModel.selectedOption.value ==
+                ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption.CLOCK &&
+                clockPickerViewModel.selectedTab.value == ClockPickerViewModel.Tab.FONT
+        ) {
+            clockPickerViewModel.cancelFontAxes()
+            return true
         }
 
-        return isBackPressedHandled
+        if (isApplyButtonEnabled.value) {
+            defaultCustomizationOptionsViewModel.showDiscardChangesDialogViewModel()
+            return true
+        }
+
+        return defaultCustomizationOptionsViewModel.handleBackPressed()
+    }
+
+    override fun resetPreview() {
+        defaultCustomizationOptionsViewModel.resetPreview()
+
+        keyguardQuickAffordancePickerViewModel2.resetPreview()
+        shapeGridPickerViewModel.resetPreview()
+        clockPickerViewModel.resetPreview()
+        colorPickerViewModel2.resetPreview()
+        darkModeViewModel.resetPreview()
     }
 
     val onCustomizeClockClicked: Flow<(() -> Unit)?> =
@@ -145,9 +171,13 @@ constructor(
                         combine(colorPickerViewModel2.onApply, darkModeViewModel.onApply) {
                             colorOnApply,
                             darkModeOnApply ->
-                            {
-                                colorOnApply?.invoke()
-                                darkModeOnApply?.invoke()
+                            if (colorOnApply == null && darkModeOnApply == null) {
+                                null
+                            } else {
+                                {
+                                    colorOnApply?.invoke()
+                                    darkModeOnApply?.invoke()
+                                }
                             }
                         }
                     else -> flow { emit(null) }
@@ -156,9 +186,14 @@ constructor(
             .map { onApply ->
                 if (onApply != null) {
                     fun(onComplete: () -> Unit) {
-                        viewModelScope.launch {
-                            onApply()
-                            onComplete()
+                        // Prevent double apply
+                        if (onApplyJob?.isActive != true) {
+                            onApplyJob =
+                                viewModelScope.launch {
+                                    onApply()
+                                    onComplete()
+                                    onApplyJob = null
+                                }
                         }
                     }
                 } else {
@@ -167,9 +202,20 @@ constructor(
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val isOnApplyEnabled: Flow<Boolean> = onApplyButtonClicked.map { it != null }
+    val isApplyButtonEnabled: StateFlow<Boolean> =
+        onApplyButtonClicked
+            .map { it != null }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
-    val isOnApplyVisible: Flow<Boolean> = selectedOption.map { it != null }
+    val isApplyButtonVisible: Flow<Boolean> = selectedOption.map { it != null }
+
+    val isToolbarCollapsed: Flow<Boolean> =
+        combine(selectedOption, clockPickerViewModel.selectedTab) { selectedOption, selectedTab ->
+                selectedOption ==
+                    ThemePickerCustomizationOptionUtil.ThemePickerLockCustomizationOption.CLOCK &&
+                    selectedTab == ClockPickerViewModel.Tab.FONT
+            }
+            .distinctUntilChanged()
 
     @ViewModelScoped
     @AssistedFactory

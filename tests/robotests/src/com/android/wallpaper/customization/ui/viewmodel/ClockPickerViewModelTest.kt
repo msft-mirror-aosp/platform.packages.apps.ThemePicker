@@ -26,9 +26,8 @@ import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
 import com.android.customization.picker.clock.ui.viewmodel.ClockColorViewModel
 import com.android.customization.picker.clock.ui.viewmodel.ClockSettingsViewModel
-import com.android.customization.picker.color.data.repository.FakeColorPickerRepository
-import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
-import com.android.customization.picker.color.domain.interactor.ColorPickerSnapshotRestorer
+import com.android.customization.picker.color.data.repository.FakeColorPickerRepository2
+import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor2
 import com.android.wallpaper.customization.ui.viewmodel.ClockPickerViewModel.Tab
 import com.android.wallpaper.testing.FakeSnapshotStore
 import com.android.wallpaper.testing.collectLastValue
@@ -83,15 +82,8 @@ class ClockPickerViewModelTest {
                         runBlocking { setUpSnapshotRestorer(store = FakeSnapshotStore()) }
                     },
             )
-        val colorPickerRepository = FakeColorPickerRepository(context = context)
-        val colorPickerInteractor =
-            ColorPickerInteractor(
-                repository = colorPickerRepository,
-                snapshotRestorer =
-                    ColorPickerSnapshotRestorer(repository = colorPickerRepository).apply {
-                        runBlocking { setUpSnapshotRestorer(store = FakeSnapshotStore()) }
-                    },
-            )
+        val colorPickerRepository = FakeColorPickerRepository2()
+        val colorPickerInteractor = ColorPickerInteractor2(repository = colorPickerRepository)
         colorMap = ClockColorViewModel.getPresetColorMap(context.resources)
         underTest =
             ClockPickerViewModel(
@@ -207,13 +199,13 @@ class ClockPickerViewModelTest {
 
     @Test
     fun previewingFontAxes_defaultWhenNoOverrides() = runTest {
-        val previewingFontAxes = collectLastValue(underTest.previewingFontAxisMap)
+        val previewingFontAxes = collectLastValue(underTest.previewingClockFontAxisMap)
         assertThat(previewingFontAxes()).isEqualTo(mapOf("key" to 50f))
     }
 
     @Test
     fun previewingFontAxes_updateAxisChangesSetting() = runTest {
-        val previewingFontAxes = collectLastValue(underTest.previewingFontAxisMap)
+        val previewingFontAxes = collectLastValue(underTest.previewingClockFontAxisMap)
         assertThat(previewingFontAxes()).isEqualTo(mapOf("key" to 50f))
 
         underTest.updatePreviewFontAxis("key", 100f)
@@ -225,7 +217,7 @@ class ClockPickerViewModelTest {
 
     @Test
     fun previewingFontAxes_applyFontEditorExitsTab_keepsPreviewAxis() = runTest {
-        val previewingFontAxes = collectLastValue(underTest.previewingFontAxisMap)
+        val previewingFontAxes = collectLastValue(underTest.previewingClockFontAxisMap)
         val clockStyleOptions = collectLastValue(underTest.clockStyleOptions)
         val selectedTab = collectLastValue(underTest.selectedTab)
         // Advance CLOCKS_EVENT_UPDATE_DELAY_MILLIS since there is a delay from clockStyleOptions
@@ -243,7 +235,7 @@ class ClockPickerViewModelTest {
         assertThat(selectedTab()).isEqualTo(Tab.FONT)
         assertThat(previewingFontAxes()).isEqualTo(mapOf("key" to 100f))
 
-        underTest.applyFontAxes()
+        underTest.confirmFontAxes()
 
         assertThat(selectedTab()).isEqualTo(Tab.STYLE)
         assertThat(previewingFontAxes()).isEqualTo(mapOf("key" to 100f))
@@ -251,7 +243,7 @@ class ClockPickerViewModelTest {
 
     @Test
     fun previewingFontAxes_revertFontEditorExitsTab_revertsPreviewAxis() = runTest {
-        val previewingFontAxes = collectLastValue(underTest.previewingFontAxisMap)
+        val previewingFontAxes = collectLastValue(underTest.previewingClockFontAxisMap)
         val clockStyleOptions = collectLastValue(underTest.clockStyleOptions)
         val selectedTab = collectLastValue(underTest.selectedTab)
         // Advance CLOCKS_EVENT_UPDATE_DELAY_MILLIS since there is a delay from clockStyleOptions
@@ -269,7 +261,7 @@ class ClockPickerViewModelTest {
         assertThat(selectedTab()).isEqualTo(Tab.FONT)
         assertThat(previewingFontAxes()).isEqualTo(mapOf("key" to 100f))
 
-        underTest.revertFontAxes()
+        underTest.cancelFontAxes()
 
         assertThat(selectedTab()).isEqualTo(Tab.STYLE)
         assertThat(previewingFontAxes()).isEqualTo(mapOf("key" to 50f))

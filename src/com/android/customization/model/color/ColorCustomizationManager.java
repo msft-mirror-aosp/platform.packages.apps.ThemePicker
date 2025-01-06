@@ -48,6 +48,7 @@ import com.android.customization.model.ResourceConstants;
 import com.android.customization.model.color.ColorOptionsProvider.ColorSource;
 import com.android.customization.model.theme.OverlayManagerCompat;
 import com.android.customization.module.logging.ThemesUserEventLogger;
+import com.android.systemui.monet.Style;
 import com.android.themepicker.R;
 
 import org.json.JSONArray;
@@ -87,6 +88,7 @@ public class ColorCustomizationManager implements CustomizationManager<ColorOpti
     private String mCurrentStyle;
     private WallpaperColors mHomeWallpaperColors;
     private WallpaperColors mLockWallpaperColors;
+    private SettingsChangedListener mListener;
 
     /** Returns the {@link ColorCustomizationManager} instance. */
     public static ColorCustomizationManager getInstance(Context context,
@@ -115,6 +117,7 @@ public class ColorCustomizationManager implements CustomizationManager<ColorOpti
         mProvider = provider;
         mContentResolver = contentResolver;
         mExecutorService = executorService;
+        mListener = null;
         ContentObserver observer = new ContentObserver(/* handler= */ null) {
             @Override
             public void onChange(boolean selfChange, Uri uri) {
@@ -126,6 +129,9 @@ public class ColorCustomizationManager implements CustomizationManager<ColorOpti
                     mCurrentOverlays = null;
                     mCurrentStyle = null;
                     mCurrentSource = null;
+                    if (mListener != null) {
+                        mListener.onSettingsChanged();
+                    }
                 }
             }
         };
@@ -164,7 +170,7 @@ public class ColorCustomizationManager implements CustomizationManager<ColorOpti
                 overlaysJson.put(OVERLAY_COLOR_SOURCE, colorOption.getSource());
                 overlaysJson.put(OVERLAY_COLOR_INDEX, String.valueOf(colorOption.getIndex()));
                 overlaysJson.put(OVERLAY_THEME_STYLE,
-                        String.valueOf(colorOption.getStyle().toString()));
+                        String.valueOf(Style.toString(colorOption.getStyle())));
 
                 // OVERLAY_COLOR_BOTH is only for wallpaper color case, not preset.
                 if (!COLOR_SOURCE_PRESET.equals(colorOption.getSource())) {
@@ -312,5 +318,20 @@ public class ColorCustomizationManager implements CustomizationManager<ColorOpti
             }
         }
         return overlayPackages;
+    }
+
+    /**
+     * Sets a listener that is called when ColorCustomizationManager is updated.
+     */
+    public void setListener(SettingsChangedListener listener) {
+        mListener = listener;
+    }
+
+    /**
+     * A listener for listening to when ColorCustomizationManager is updated.
+     */
+    public interface SettingsChangedListener {
+        /** */
+        void onSettingsChanged();
     }
 }

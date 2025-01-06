@@ -17,17 +17,18 @@
 package com.android.wallpaper.customization.ui.viewmodel
 
 import android.content.Context
+import com.android.customization.model.color.ColorOption
 import com.android.customization.model.color.ColorOptionImpl
 import com.android.customization.module.logging.ThemesUserEventLogger
-import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor
-import com.android.customization.picker.color.shared.model.ColorOptionModel
+import com.android.customization.picker.color.domain.interactor.ColorPickerInteractor2
 import com.android.customization.picker.color.shared.model.ColorType
 import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
 import com.android.themepicker.R
 import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
+import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.FloatingToolbarTabViewModel
-import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel2
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 
 /** Models UI state for a color picker experience. */
@@ -48,12 +50,14 @@ class ColorPickerViewModel2
 @AssistedInject
 constructor(
     @ApplicationContext context: Context,
-    private val interactor: ColorPickerInteractor,
+    private val colorUpdateViewModel: ColorUpdateViewModel,
+    private val interactor: ColorPickerInteractor2,
     private val logger: ThemesUserEventLogger,
     @Assisted private val viewModelScope: CoroutineScope,
 ) {
+    val selectedColorOption = interactor.selectedColorOption
 
-    private val overridingColorOption = MutableStateFlow<ColorOptionModel?>(null)
+    private val overridingColorOption = MutableStateFlow<ColorOption?>(null)
     val previewingColorOption = overridingColorOption.asStateFlow()
 
     private val selectedColorTypeTabId = MutableStateFlow<ColorType?>(null)
@@ -109,38 +113,27 @@ constructor(
 
     /** The list of all color options mapped by their color type */
     private val allColorOptions:
-        Flow<Map<ColorType, List<OptionItemViewModel<ColorOptionIconViewModel>>>> =
+        Flow<Map<ColorType, List<OptionItemViewModel2<ColorOptionIconViewModel>>>> =
         interactor.colorOptions.map { colorOptions ->
             colorOptions
                 .map { colorOptionEntry ->
                     colorOptionEntry.key to
-                        colorOptionEntry.value.map { colorOptionModel ->
-                            val colorOption: ColorOptionImpl =
-                                colorOptionModel.colorOption as ColorOptionImpl
-                            val lightThemeColors =
-                                colorOption.previewInfo.resolveColors(/* darkTheme= */ false)
-                            val darkThemeColors =
-                                colorOption.previewInfo.resolveColors(/* darkTheme= */ true)
+                        colorOptionEntry.value.map { colorOption ->
+                            colorOption as ColorOptionImpl
                             val isSelectedFlow: StateFlow<Boolean> =
-                                previewingColorOption
-                                    .map {
-                                        it?.colorOption?.isEquivalent(colorOptionModel.colorOption)
-                                            ?: colorOptionModel.isSelected
+                                combine(previewingColorOption, selectedColorOption) {
+                                        previewing,
+                                        selected ->
+                                        previewing?.isEquivalent(colorOption)
+                                            ?: selected?.isEquivalent(colorOption)
+                                            ?: false
                                     }
                                     .stateIn(viewModelScope)
-                            OptionItemViewModel<ColorOptionIconViewModel>(
-                                key = MutableStateFlow(colorOptionModel.key) as StateFlow<String>,
-                                payload =
-                                    ColorOptionIconViewModel(
-                                        lightThemeColor0 = lightThemeColors[0],
-                                        lightThemeColor1 = lightThemeColors[1],
-                                        lightThemeColor2 = lightThemeColors[2],
-                                        lightThemeColor3 = lightThemeColors[3],
-                                        darkThemeColor0 = darkThemeColors[0],
-                                        darkThemeColor1 = darkThemeColors[1],
-                                        darkThemeColor2 = darkThemeColors[2],
-                                        darkThemeColor3 = darkThemeColors[3],
-                                    ),
+                            val key =
+                                "${colorOption.type}::${colorOption.style}::${colorOption.serializedPackages}"
+                            OptionItemViewModel2<ColorOptionIconViewModel>(
+                                key = MutableStateFlow(key) as StateFlow<String>,
+                                payload = ColorOptionIconViewModel.fromColorOption(colorOption),
                                 text =
                                     Text.Loaded(
                                         colorOption.getContentDescription(context).toString()
@@ -154,7 +147,7 @@ constructor(
                                         } else {
                                             {
                                                 viewModelScope.launch {
-                                                    overridingColorOption.value = colorOptionModel
+                                                    overridingColorOption.value = colorOption
                                                 }
                                             }
                                         }
@@ -165,18 +158,26 @@ constructor(
                 .toMap()
         }
 
+    /**
+     * This function suspends until onApplyComplete is called to accommodate for configuration
+     * change updates, which are applied with a latency.
+     */
     val onApply: Flow<(suspend () -> Unit)?> =
-        previewingColorOption.map { previewingColorOption ->
-            previewingColorOption?.let {
-                if (it.isSelected) {
+        combine(previewingColorOption, selectedColorOption) { previewing, selected ->
+            previewing?.let {
+                if (previewing.isEquivalent(selected)) {
                     null
                 } else {
                     {
                         interactor.select(it)
+                        // Suspend until first color update
+                        colorUpdateViewModel.systemColorsUpdatedNoReplay.take(1).collect {
+                            return@collect
+                        }
                         logger.logThemeColorApplied(
-                            previewingColorOption.colorOption.sourceForLogging,
-                            previewingColorOption.colorOption.styleForLogging,
-                            previewingColorOption.colorOption.seedColor,
+                            it.sourceForLogging,
+                            it.styleForLogging,
+                            it.seedColor,
                         )
                     }
                 }
@@ -188,9 +189,9 @@ constructor(
     }
 
     /** The list of all available color options for the selected Color Type. */
-    val colorOptions: Flow<List<OptionItemViewModel<ColorOptionIconViewModel>>> =
+    val colorOptions: Flow<List<OptionItemViewModel2<ColorOptionIconViewModel>>> =
         combine(allColorOptions, selectedColorTypeTabId) {
-            allColorOptions: Map<ColorType, List<OptionItemViewModel<ColorOptionIconViewModel>>>,
+            allColorOptions: Map<ColorType, List<OptionItemViewModel2<ColorOptionIconViewModel>>>,
             selectedColorTypeIdOrNull ->
             val selectedColorTypeId = selectedColorTypeIdOrNull ?: ColorType.WALLPAPER_COLOR
             allColorOptions[selectedColorTypeId]!!
