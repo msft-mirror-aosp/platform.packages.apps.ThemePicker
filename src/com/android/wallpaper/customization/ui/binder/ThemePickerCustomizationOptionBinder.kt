@@ -202,10 +202,10 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
 
         val optionThemedIcons =
             homeScreenCustomizationOptionEntries
-                .find { it.first == ThemePickerHomeCustomizationOption.THEMED_ICONS }
-                ?.second
+                .first { it.first == ThemePickerHomeCustomizationOption.THEMED_ICONS }
+                .second
         val optionThemedIconsSwitch =
-            optionThemedIcons?.findViewById<MaterialSwitch>(R.id.option_entry_switch)
+            optionThemedIcons.requireViewById<MaterialSwitch>(R.id.option_entry_switch)
 
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -315,24 +315,32 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                     }
                 }
 
-                if (optionThemedIconsSwitch != null) {
-                    launch {
-                        optionsViewModel.themedIconViewModel.isAvailable.collect { isAvailable ->
-                            optionThemedIconsSwitch.isEnabled = isAvailable
-                        }
+                launch {
+                    optionsViewModel.themedIconViewModel.isAvailable.collect { isAvailable ->
+                        optionThemedIconsSwitch.isEnabled = isAvailable
                     }
+                }
 
-                    launch {
-                        optionsViewModel.themedIconViewModel.isActivated.collect {
-                            optionThemedIconsSwitch.isChecked = it
-                        }
+                launch {
+                    var binding: SwitchColorBinder.Binding? = null
+                    optionsViewModel.themedIconViewModel.isActivated.collect {
+                        optionThemedIconsSwitch.isChecked = it
+                        binding?.destroy()
+                        binding =
+                            SwitchColorBinder.bind(
+                                switch = optionThemedIconsSwitch,
+                                isChecked = it,
+                                colorUpdateViewModel = colorUpdateViewModel,
+                                shouldAnimateColor = isOnMainScreen,
+                                lifecycleOwner = lifecycleOwner,
+                            )
                     }
+                }
 
-                    launch {
-                        optionsViewModel.themedIconViewModel.toggleThemedIcon.collect {
-                            optionThemedIconsSwitch.setOnCheckedChangeListener { _, _ ->
-                                launch { it.invoke() }
-                            }
+                launch {
+                    optionsViewModel.themedIconViewModel.toggleThemedIcon.collect {
+                        optionThemedIconsSwitch.setOnCheckedChangeListener { _, _ ->
+                            launch { it.invoke() }
                         }
                     }
                 }
