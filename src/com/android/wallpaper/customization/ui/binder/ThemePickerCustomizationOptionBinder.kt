@@ -21,7 +21,6 @@ import android.content.Context
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.Switch
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
@@ -57,6 +56,7 @@ import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUti
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
+import com.google.android.material.materialswitch.MaterialSwitch
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -205,7 +205,7 @@ constructor(private val defaultCustomizationOptionsBinder: DefaultCustomizationO
                 .find { it.first == ThemePickerHomeCustomizationOption.THEMED_ICONS }
                 ?.second
         val optionThemedIconsSwitch =
-            optionThemedIcons?.findViewById<Switch>(R.id.option_entry_switch)
+            optionThemedIcons?.findViewById<MaterialSwitch>(R.id.option_entry_switch)
 
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
