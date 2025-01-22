@@ -49,7 +49,7 @@
     <string name="shape_and_grid_title" msgid="9092477491363761054">"הצורה והפריסה של האפליקציה"</string>
     <string name="grid_layout" msgid="370175667652663686">"פריסה"</string>
     <string name="apply_theme_btn" msgid="6293081192321303991">"אישור"</string>
-    <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"יש להקיש כדי לערוך"</string>
+    <string name="edit_custom_theme_lbl" msgid="5211377705710775224">"יש ללחוץ כדי לערוך"</string>
     <string name="keep_my_wallpaper" msgid="8012385376769568517">"שמירת הטפט הנוכחי"</string>
     <string name="theme_preview_card_content_description" msgid="5989222908619535533">"תצוגה מקדימה של הסגנון"</string>
     <string name="grid_preview_card_content_description" msgid="8449383777584714842">"תצוגה מקדימה של הרשת"</string>
