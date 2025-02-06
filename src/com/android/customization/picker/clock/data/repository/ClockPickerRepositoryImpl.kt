@@ -24,6 +24,7 @@ import com.android.customization.picker.clock.shared.ClockSize
 import com.android.customization.picker.clock.shared.model.ClockMetadataModel
 import com.android.systemui.plugins.clocks.ClockFontAxis
 import com.android.systemui.plugins.clocks.ClockFontAxisSetting
+import com.android.systemui.plugins.clocks.ClockId
 import com.android.systemui.plugins.clocks.ClockMetadata
 import com.android.systemui.shared.clocks.ClockRegistry
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepository
@@ -103,7 +104,7 @@ constructor(
 
     /** The currently-selected clock. This also emits the clock color information. */
     override val selectedClock: Flow<ClockMetadataModel> =
-        callbackFlow {
+        callbackFlow<ClockMetadataModel?> {
                 fun send() {
                     val activeClockId = registry.activeClockId
                     val metadata = registry.settings?.metadata
@@ -145,6 +146,9 @@ constructor(
             }
             .flowOn(mainDispatcher)
             .mapNotNull { it }
+            // Make this a shared flow to prevent ClockRegistry.registerClockChangeListener from
+            // being called every time this flow is collected, since ClockRegistry is a singleton.
+            .shareIn(mainScope, SharingStarted.WhileSubscribed(), 1)
 
     override suspend fun setSelectedClock(clockId: String) {
         registry.mutateSetting { oldSettings ->
@@ -193,6 +197,10 @@ constructor(
             newSettings.metadata = oldSettings.metadata
             newSettings
         }
+    }
+
+    override fun isReactiveToTone(clockId: ClockId): Boolean? {
+        return registry.getClockPickerConfig(clockId)?.isReactiveToTone
     }
 
     private fun JSONObject.getSelectedColorId(): String? {

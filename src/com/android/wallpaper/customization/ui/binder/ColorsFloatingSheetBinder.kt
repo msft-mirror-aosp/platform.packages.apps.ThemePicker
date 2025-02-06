@@ -16,7 +16,6 @@
 
 package com.android.wallpaper.customization.ui.binder
 
-import android.content.Context
 import android.content.res.Configuration.UI_MODE_NIGHT_MASK
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.view.View
@@ -32,7 +31,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.android.customization.picker.color.ui.binder.ColorOptionIconBinder2
 import com.android.customization.picker.color.ui.view.ColorOptionIconView2
 import com.android.customization.picker.color.ui.viewmodel.ColorOptionIconViewModel
-import com.android.customization.picker.common.ui.view.SingleRowListItemSpacing
 import com.android.customization.picker.mode.ui.binder.DarkModeBinder
 import com.android.themepicker.R
 import com.android.wallpaper.customization.ui.util.ThemePickerCustomizationOptionUtil.ThemePickerHomeCustomizationOption.COLORS
@@ -43,6 +41,7 @@ import com.android.wallpaper.picker.customization.ui.view.adapter.FloatingToolba
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.option.ui.adapter.OptionItemAdapter2
 import java.lang.ref.WeakReference
+import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.launch
 
 object ColorsFloatingSheetBinder {
@@ -98,13 +97,21 @@ object ColorsFloatingSheetBinder {
                 lifecycleOwner = lifecycleOwner,
             )
         val colorsList =
-            view.requireViewById<RecyclerView>(R.id.colors_horizontal_list).also {
-                it.initColorsList(view.context.applicationContext, colorsAdapter)
+            view.requireViewById<RecyclerView>(R.id.colors_horizontal_list).apply {
+                adapter = colorsAdapter
+                layoutManager =
+                    LinearLayoutManager(
+                        view.context.applicationContext,
+                        LinearLayoutManager.HORIZONTAL,
+                        false,
+                    )
             }
 
         DarkModeBinder.bind(
             darkModeToggle = view.findViewById(R.id.dark_mode_toggle),
             viewModel = optionsViewModel.darkModeViewModel,
+            colorUpdateViewModel = colorUpdateViewModel,
+            shouldAnimateColor = isFloatingSheetActive,
             lifecycleOwner = lifecycleOwner,
         )
 
@@ -154,30 +161,18 @@ object ColorsFloatingSheetBinder {
                         com.android.wallpaper.R.id.background
                     )
                 val night = uiMode and UI_MODE_NIGHT_MASK == UI_MODE_NIGHT_YES
-                ColorOptionIconBinder2.bind(colorOptionIconView, colorIcon, night)
-                // Return null since it does not need the lifecycleOwner to launch any job for later
-                // disposal when rebind.
-                return@OptionItemAdapter2 null
+                val binding =
+                    ColorOptionIconBinder2.bind(
+                        view = colorOptionIconView,
+                        viewModel = colorIcon,
+                        darkTheme = night,
+                        colorUpdateViewModel = colorUpdateViewModel,
+                        shouldAnimateColor = shouldAnimateColor,
+                        lifecycleOwner = lifecycleOwner,
+                    )
+                return@OptionItemAdapter2 DisposableHandle { binding.destroy() }
             },
             colorUpdateViewModel = WeakReference(colorUpdateViewModel),
             shouldAnimateColor = shouldAnimateColor,
         )
-
-    private fun RecyclerView.initColorsList(
-        context: Context,
-        adapter: OptionItemAdapter2<ColorOptionIconViewModel>,
-    ) {
-        apply {
-            this.adapter = adapter
-            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-            addItemDecoration(
-                SingleRowListItemSpacing(
-                    context.resources.getDimensionPixelSize(
-                        R.dimen.floating_sheet_content_horizontal_padding
-                    ),
-                    0,
-                )
-            )
-        }
-    }
 }

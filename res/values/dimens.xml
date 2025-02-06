@@ -200,7 +200,6 @@
     <dimen name="floating_sheet_clock_edit_icon_margin">-18dp</dimen>
     <dimen name="floating_sheet_clock_style_thumbnail_margin_bottom">12dp</dimen>
     <dimen name="floating_sheet_clock_style_clock_size_text_margin_end">16dp</dimen>
-    <dimen name="floating_sheet_clock_color_option_list_bottom_margin">12dp</dimen>
     <dimen name="floating_sheet_color_option_size">54dp</dimen>
     <dimen name="floating_sheet_color_option_stroke_width">3dp</dimen>
     <dimen name="customization_option_entry_shortcut_icon_size">20dp</dimen>
@@ -213,4 +212,8 @@
     <dimen name="clock_axis_control_slider_row_margin_vertical">10dp</dimen>
     <dimen name="clock_axis_control_switch_row_margin_vertical">8dp</dimen>
     <dimen name="clock_font_apply_padding_start">8dp</dimen>
+
+    <!-- Shared dimensions for Material 3 sliders -->
+    <dimen name="slider_track_height">24dp</dimen>
+    <dimen name="slider_thumb_height">36dp</dimen>
 </resources>
