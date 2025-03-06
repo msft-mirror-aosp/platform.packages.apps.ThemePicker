@@ -94,7 +94,7 @@
     <string name="delete_custom_theme_confirmation" msgid="4452137183628769394">"ಕಸ್ಟಮ್ ಶೈಲಿಯನ್ನು ಅಳಿಸುವುದೇ?"</string>
     <string name="delete_custom_theme_button" msgid="5102462988130208824">"ಅಳಿಸಿ"</string>
     <string name="cancel" msgid="4651030493668562067">"ರದ್ದುಗೊಳಿಸಿ"</string>
-    <string name="set_theme_wallpaper_dialog_message" msgid="2179661027350908003">"ಶೈಲಿ ವಾಲ್‌ಪೇಪರ್ ಹೊಂದಿಸಿ"</string>
+    <string name="set_theme_wallpaper_dialog_message" msgid="2179661027350908003">"ಶೈಲಿ ವಾಲ್‌ಪೇಪರ್ ಸೆಟ್ ಮಾಡಿ"</string>
     <string name="use_style_instead_title" msgid="1578754995763917502">"ಬದಲಿಗೆ <xliff:g id="ID_1">%1$s</xliff:g> ಬಳಸಬೇಕೆ?"</string>
     <string name="use_style_instead_body" msgid="3051937045807471496">"ನೀವು ಆಯ್ಕೆ ಮಾಡುವ ಘಟಕಗಳು <xliff:g id="ID_1">%1$s</xliff:g> ಶೈಲಿಗೆ ಹೊಂದಿಕೆಯಾಗಬೇಕು. ಬದಲಿಗೆ ನೀವು <xliff:g id="ID_2">%1$s</xliff:g> ಬಳಸಲು ಬಯಸುವಿರಾ?"</string>
     <string name="use_style_button" msgid="1754493078383627019">"<xliff:g id="ID_1">%1$s</xliff:g> ಅನ್ನು ಬಳಸಿ"</string>
